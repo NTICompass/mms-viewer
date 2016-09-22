@@ -1,2 +1,2 @@
 # mms-viewer
-A MMS test program.  My Virgin Mobile phone sometimes has trouble downloading MMS. 
+A crappy python script to download/parse MMS messages.
