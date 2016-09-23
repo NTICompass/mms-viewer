@@ -56,10 +56,12 @@ class VirginMobile:
 # Parse the MMS PDU into an object
 # Some info at http://support.nowsms.com/discus/messages/485/13726.html
 # More into at http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_2-20050429-A/OMA-MMS-ENC-V1_2-20050301-A.pdf
+# Or at: http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_3-20080128-C/OMA-TS-MMS-ENC-V1_3-20080128-C.pdf
 # TODO: Totally don't steal code from http://python-mms.sourceforge.net/api/mms.mms_pdu-pysrc.html
 # TODO: More code I shouldn't steal from: https://github.com/heyman/mms-decoder/blob/master/mmsdecoder.php
 class MMSMessage:
 	# From: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
+	# See also: https://www.wireshark.org/docs/dfref/m/mmse.html
 	# Each header value has its own unique way of being decoded
 	# tuple: (name, length, method)
 	#	length is:
@@ -70,18 +72,18 @@ class MMSMessage:
 		0x81: ("Bcc"),
 		0x82: ("Cc"),
 		0x83: ("X-Mms-Content-Location"),
-		0x84: ("Content-Type"),
+		0x84: ("Content-Type"), # position 151
 		0x85: ("Date", -1, 'timestamp'),
-		0x86: ("X-Mms-Delivery-Report"),
+		0x86: ("X-Mms-Delivery-Report", 1, 'boolean'),
 		0x87: ("X-Mms-Delivery-Time"),
 		0x88: ("X-Mms-Expiry"),
 		0x89: ("From", -1, 'from'),
-		0x8A: ("X-mms-Message-Class"),
+		0x8A: ("X-mms-Message-Class", 1, 'messageClass'),
 		0x8B: ("Message-ID", 0, 'ascii'),
 		0x8C: ("X-Mms-Message-Type", 1, 'messageType'),
 		0x8D: ("X-Mms-MMS-Version", 1, 'version'),
 		0x8E: ("X-Mms-Message-Size"),
-		0x8F: ("X-Mms-Priority"),
+		0x8F: ("X-Mms-Priority", 1, 'messagePriority'),
 		0x90: ("X-Mms-Read-Report"),
 		0x91: ("X-Mms-Report-Allowed"),
 		0x92: ("X-Mms-Response-Status"),
@@ -91,8 +93,8 @@ class MMSMessage:
 		0x96: ("Subject"),
 		0x97: ("To", 0, 'to'), # Note: There can be multiple "To" values
 		0x98: ("X-Mms-Transaction-Id", 0, 'ascii'),
-		0x99: ("X-Mms-Retrieve-Status"),
-		0x9A: ("X-Mms-Retrieve-Text"),
+		0x99: ("X-Mms-Retrieve-Status", 1, 'boolean'),
+		0x9A: ("X-Mms-Retrieve-Text", 0, 'ascii'),
 		0x9B: ("X-Mms-Read-Status"),
 		0x9C: ("X-Mms-Reply-Charging"),
 		0x9D: ("X-Mms-Reply-Charging-Deadline"),
@@ -122,6 +124,19 @@ class MMSMessage:
 		0x91: '1.1',
 		0x92: '1.2',
 		0x93: '1.3'
+	}
+	# Values for header 0x8A
+	mms_message_class = {
+		0x80: 'Personal',
+		0x81: 'Advertisement',
+		0x82: 'Informational',
+		0x83: 'Auto'
+	}
+	# Values for header 0x8F
+	mms_message_priority = {
+		0x80: 'Low',
+		0x81: 'Normal',
+		0x82: 'High'
 	}
 
 	def __init__(self, mms):
@@ -179,6 +194,12 @@ class MMSMessage:
 			elif method == 'version':
 				# Get the mms version number
 				value = self.mms_version[ord(byte_range)]
+			elif method == 'messageClass':
+				# Get the "message class"
+				value = self.mms_message_class[ord(byte_range)]
+			elif method == 'messagePriority':
+				# Get the "message priority"
+				value = self.mms_message_priority[ord(byte_range)]
 			elif method == 'from':
 				# The "from" phone number
 				# The 1st byte is the "Address-present-token" (0x80)
@@ -202,6 +223,10 @@ class MMSMessage:
 				# ie: convert b'\x57\xe2\xa2\x49' to 0x57e2a249 (1474470473)
 				timestamp = int(''.join(map(hex, byte_range)).replace('0x', ''), 16)
 				value = datetime.fromtimestamp(timestamp)
+			elif method == 'boolean':
+				# A "boolean" is a yes/no value
+				# 0x80 = yes and 0x81 = no
+				value = byte_range == b'\x80'
 
 			if header not in mms_result:
 				# If this is an array, then all we need is a reference to it
