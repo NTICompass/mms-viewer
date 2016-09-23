@@ -4,6 +4,7 @@
 	https://github.com/NTICompass/mms-viewer
 """
 import sys, urllib.request
+from datetime import datetime
 
 class VirginMobile:
 	"""
@@ -54,7 +55,9 @@ class VirginMobile:
 
 # Parse the MMS PDU into an object
 # Some info at http://support.nowsms.com/discus/messages/485/13726.html
+# More into at http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_2-20050429-A/OMA-MMS-ENC-V1_2-20050301-A.pdf
 # TODO: Totally don't steal code from http://python-mms.sourceforge.net/api/mms.mms_pdu-pysrc.html
+# TODO: More code I shouldn't steal from: https://github.com/heyman/mms-decoder/blob/master/mmsdecoder.php
 class MMSMessage:
 	# From: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
 	# Each header value has its own unique way of being decoded
@@ -68,15 +71,15 @@ class MMSMessage:
 		0x82: ("Cc"),
 		0x83: ("X-Mms-Content-Location"),
 		0x84: ("Content-Type"),
-		0x85: ("Date"),
+		0x85: ("Date", -1, 'timestamp'),
 		0x86: ("X-Mms-Delivery-Report"),
 		0x87: ("X-Mms-Delivery-Time"),
 		0x88: ("X-Mms-Expiry"),
-		0x89: ("From"),
+		0x89: ("From", -1, 'from'),
 		0x8A: ("X-mms-Message-Class"),
-		0x8B: ("Message-ID"),
+		0x8B: ("Message-ID", 0, 'ascii'),
 		0x8C: ("X-Mms-Message-Type", 1, 'messageType'),
-		0x8D: ("X-Mms-MMS-Version"),
+		0x8D: ("X-Mms-MMS-Version", 1, 'version'),
 		0x8E: ("X-Mms-Message-Size"),
 		0x8F: ("X-Mms-Priority"),
 		0x90: ("X-Mms-Read-Report"),
@@ -86,8 +89,8 @@ class MMSMessage:
 		0x94: ("X-Mms-Sender-Visibility"),
 		0x95: ("X-Mms-Status"),
 		0x96: ("Subject"),
-		0x97: ("To"),
-		0x98: ("X-Mms-Transaction-Id", 00, 'ascii'),
+		0x97: ("To", 0, 'to'), # Note: There can be multiple "To" values
+		0x98: ("X-Mms-Transaction-Id", 0, 'ascii'),
 		0x99: ("X-Mms-Retrieve-Status"),
 		0x9A: ("X-Mms-Retrieve-Text"),
 		0x9B: ("X-Mms-Read-Status"),
@@ -112,6 +115,14 @@ class MMSMessage:
 		0x89: "m-forward-req",
 		0x8A: "m-forward-conf"
 	}
+	# Values for header 0x8D
+	# From: https://godoc.org/github.com/ubuntu-phonedations/nuntium/mms
+	mms_version = {
+		0x90: '1.0',
+		0x91: '1.1',
+		0x92: '1.2',
+		0x93: '1.3'
+	}
 
 	def __init__(self, mms):
 		self.data = mms
@@ -119,6 +130,7 @@ class MMSMessage:
 	def decode(self):
 		# Start looping over each byte in the data.
 		# Assume the 1st byte is a header code and then start decoding.
+		# Info on byte/bytearray: https://docs.python.org/3/library/stdtypes.html
 		mms_result = {}
 
 		curr_index = 0
@@ -126,46 +138,75 @@ class MMSMessage:
 			# Get the header
 			curr_byte = self.data[curr_index]
 			# and its parsing info
+			if len(self.mms_headers[curr_byte]) != 3:
+				print(mms_result)
+				sys.exit(0)
 			header, length, method = self.mms_headers[curr_byte]
 
 			# Decode the value...
 			value = None
+			# Shift to the next byte
+			curr_index += 1
+
 			# First read the length of bytes we need
 			if length > 0:
 				# Set number of bytes
-				curr_index += 1
 				byte_range = self.data[curr_index:curr_index+length]
-
+				# Shift over that many bytes
 				curr_index += length
 			elif length == -1:
 				# Next type is the length
-				curr_index += 1
 				byte_count = self.data[curr_index]
-
 				curr_index += 1
-				byte_range = self.data[curr_index:byte_count]
 
+				# Read and shift the correct number of bytes
+				byte_range = self.data[curr_index:curr_index+byte_count]
 				curr_index += byte_count
 			elif length == 0:
 				# Read until we hit a 0x00
 				byte_range = bytearray()
-
-				curr_index += 1
 				while self.data[curr_index] != 0x00:
 					byte_range.append(self.data[curr_index])
 					curr_index += 1
 
+				# Shift off the null byte
+				curr_index += 1
+
 			# Then decide what to do with those bytes
 			if method == 'messageType':
 				# Get the message type
-				value = self.mms_message_type[byte_range]
+				value = self.mms_message_type[ord(byte_range)]
+			elif method == 'version':
+				# Get the mms version number
+				value = self.mms_version[ord(byte_range)]
+			elif method == 'from':
+				# The "from" phone number
+				# The 1st byte is the "Address-present-token" (0x80)
+				# The last byte is a null byte (trim that off)
+				if byte_range.startswith(b'\x80'):
+					value = byte_range.lstrip(b'\x80').rstrip(b'\x00').decode('utf_8')
+				else:
+					value = ''
+			elif method == 'to':
+				# This will be an array, just in case there are multiple values
+				value = mms_result[header] if header in mms_result else []
+				# Note: value is a *reference*, so we can just update and not set it
+				value.append(byte_range.decode('utf_8'))
 			elif method == 'ascii':
 				# Convert the byte_range into an ASCII string
-				value = byte_range
-				print(value)
-				sys.exit(0)
+				value = byte_range.decode('utf_8')
+			elif method == 'timestamp':
+				# Decode the bytes into an timestamp
+				# TODO: There's got to be a better way to convert a
+				# bytearray/bytes object into an int
+				# ie: convert b'\x57\xe2\xa2\x49' to 0x57e2a249 (1474470473)
+				timestamp = int(''.join(map(hex, byte_range)).replace('0x', ''), 16)
+				value = datetime.fromtimestamp(timestamp)
 
-			mms_result[header] = value
+			if header not in mms_result:
+				# If this is an array, then all we need is a reference to it
+				# We can append to that and not need to set it back in the object
+				mms_result[header] = value
 
 if __name__ == '__main__':
 	phone = VirginMobile('15555555555')
