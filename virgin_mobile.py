@@ -62,28 +62,29 @@ class VirginMobile:
 class MMSMessage:
 	# From: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
 	# See also: https://www.wireshark.org/docs/dfref/m/mmse.html
+	# Decoding example: http://support.nowsms.com/discus/messages/485/6597538470-D8751867A0B-13774.txt
 	# Each header value has its own unique way of being decoded
-	# tuple: (name, length, method)
-	#	length is:
-	#		x: number of bytes
-	#		0: Read until 0x00
-	#		-1: Next byte is length
+	# tuple: (name, method)
+	# See: http://www.wapforum.org/tech/documents/WAP-230-WSP-20010705-a.pdf (see section 8.4.1.2)
+	# Turns out the 1st byte after the header (which may be *part* of the data), tells us how to interpret the length
+
 	mms_headers = {
 		0x81: ("Bcc"),
 		0x82: ("Cc"),
 		0x83: ("X-Mms-Content-Location"),
+		# http://python-mms.sourceforge.net/api/mms.wsp_pdu.Decoder-class.html#decodeContentTypeValue
 		0x84: ("Content-Type"),
-		0x85: ("Date", -1, 'timestamp'),
-		0x86: ("X-Mms-Delivery-Report", 1, 'boolean'),
+		0x85: ("Date", 'timestamp'),
+		0x86: ("X-Mms-Delivery-Report", 'boolean'),
 		0x87: ("X-Mms-Delivery-Time"),
 		0x88: ("X-Mms-Expiry"),
-		0x89: ("From", -1, 'from'),
-		0x8A: ("X-mms-Message-Class", 1, 'messageClass'),
-		0x8B: ("Message-ID", 0, 'ascii'),
-		0x8C: ("X-Mms-Message-Type", 1, 'messageType'),
-		0x8D: ("X-Mms-MMS-Version", 1, 'version'),
+		0x89: ("From", 'from'),
+		0x8A: ("X-mms-Message-Class", 'messageClass'),
+		0x8B: ("Message-ID", 'ascii'),
+		0x8C: ("X-Mms-Message-Type", 'messageType'),
+		0x8D: ("X-Mms-MMS-Version", 'version'),
 		0x8E: ("X-Mms-Message-Size"),
-		0x8F: ("X-Mms-Priority", 1, 'messagePriority'),
+		0x8F: ("X-Mms-Priority", 'messagePriority'),
 		0x90: ("X-Mms-Read-Report"),
 		0x91: ("X-Mms-Report-Allowed"),
 		0x92: ("X-Mms-Response-Status"),
@@ -91,10 +92,10 @@ class MMSMessage:
 		0x94: ("X-Mms-Sender-Visibility"),
 		0x95: ("X-Mms-Status"),
 		0x96: ("Subject"),
-		0x97: ("To", 0, 'to'), # Note: There can be multiple "To" values
-		0x98: ("X-Mms-Transaction-Id", 0, 'ascii'),
-		0x99: ("X-Mms-Retrieve-Status", 1, 'boolean'),
-		0x9A: ("X-Mms-Retrieve-Text", 0, 'ascii'),
+		0x97: ("To", 'to'), # Note: There can be multiple "To" values
+		0x98: ("X-Mms-Transaction-Id", 'ascii'),
+		0x99: ("X-Mms-Retrieve-Status", 'boolean'),
+		0x9A: ("X-Mms-Retrieve-Text", 'ascii'),
 		0x9B: ("X-Mms-Read-Status"),
 		0x9C: ("X-Mms-Reply-Charging"),
 		0x9D: ("X-Mms-Reply-Charging-Deadline"),
@@ -153,32 +154,45 @@ class MMSMessage:
 			# Get the header
 			curr_byte = self.data[curr_index]
 			# and its parsing info
-			if len(self.mms_headers[curr_byte]) != 3:
+			if len(self.mms_headers[curr_byte]) != 2:
 				print(mms_result)
 				sys.exit(0)
-			header, length, method = self.mms_headers[curr_byte]
+			header, method = self.mms_headers[curr_byte]
 
 			# Decode the value...
 			value = None
 			# Shift to the next byte
 			curr_index += 1
 
-			# First read the length of bytes we need
-			if length > 0:
-				# Set number of bytes
-				byte_range = self.data[curr_index:curr_index+length]
+			# Figure out the length of this header's value
+			# Read the next byte...
+			# 00-1E: Read that many bytes
+			# 1F: Next byte is length
+			# 20-7F: Null-terminated strng
+			# 80-FF: This byte is the data
+			header_length = self.data[curr_index]
+
+			if 0 <= header_length <= 0x1E:
+				# This byte is the length of the data
+				# So read that many bytes ahead
+				# After shifting to the start of the data
+				curr_index +=1
+				byte_range = self.data[curr_index:curr_index+header_length]
 				# Shift over that many bytes
-				curr_index += length
-			elif length == -1:
-				# Next type is the length
+				curr_index += header_length
+			elif header_length == 0x1F:
+				# The next byte is the length
+				curr_index += 1
 				byte_count = self.data[curr_index]
+				# Shift to the start of the data
 				curr_index += 1
 
 				# Read and shift the correct number of bytes
 				byte_range = self.data[curr_index:curr_index+byte_count]
 				curr_index += byte_count
-			elif length == 0:
-				# Read until we hit a 0x00
+			elif 0x20 <= header_length <= 0x7F:
+				# Read until we hit a null byte (0x00)
+				# The `header_length` byte is part of our data
 				byte_range = bytearray()
 				while self.data[curr_index] != 0x00:
 					byte_range.append(self.data[curr_index])
@@ -186,20 +200,33 @@ class MMSMessage:
 
 				# Shift off the null byte
 				curr_index += 1
+			elif 0x80 <= header_length <= 0xFF:
+				# This byte is actually the value
+				# So just return it and move on
+				byte_range = self.data[curr_index]
+				curr_index += 1
 
-			# Then decide what to do with those bytes
+			# Then decide what to do with those byte(s)
 			if method == 'messageType':
 				# Get the message type
-				value = self.mms_message_type[ord(byte_range)]
+				value = self.mms_message_type[byte_range]
 			elif method == 'version':
 				# Get the mms version number
-				value = self.mms_version[ord(byte_range)]
+				value = self.mms_version[byte_range]
 			elif method == 'messageClass':
 				# Get the "message class"
-				value = self.mms_message_class[ord(byte_range)]
+				value = self.mms_message_class[byte_range]
 			elif method == 'messagePriority':
 				# Get the "message priority"
-				value = self.mms_message_priority[ord(byte_range)]
+				value = self.mms_message_priority[byte_range]
+			elif method == 'contentType':
+				# The 1st byte tells us how to interpret the content type
+				# Either "Content-general-form" or "Constrained-media"
+				# The 2nd byte tells us whether the content type
+				# is an ascii string, or a byte (to be looked up in a table)
+				#if byte_range.pop(0) <= 0x1F: #Content-general-form
+				#	pass
+				pass
 			elif method == 'from':
 				# The "from" phone number
 				# The 1st byte is the "Address-present-token" (0x80)
