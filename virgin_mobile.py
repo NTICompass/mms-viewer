@@ -72,7 +72,7 @@ class MMSMessage:
 		0x81: ("Bcc"),
 		0x82: ("Cc"),
 		0x83: ("X-Mms-Content-Location"),
-		0x84: ("Content-Type"), # position 151
+		0x84: ("Content-Type"),
 		0x85: ("Date", -1, 'timestamp'),
 		0x86: ("X-Mms-Delivery-Report", 1, 'boolean'),
 		0x87: ("X-Mms-Delivery-Time"),
@@ -231,6 +231,7 @@ class MMSMessage:
 			if header not in mms_result:
 				# If this is an array, then all we need is a reference to it
 				# We can append to that and not need to set it back in the object
+				print('Decoded {0}'.format(header))
 				mms_result[header] = value
 
 if __name__ == '__main__':
