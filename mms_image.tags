@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wxHexEditor_XML_TAG>
+  <filename path="/home/nticompass/Code/mms-viewer/mms_image.tags">
+    <TAG id="0">
+      <start_offset>0</start_offset>
+      <end_offset>1</end_offset>
+      <tag_text>X-Mms-Message-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="1">
+      <start_offset>2</start_offset>
+      <end_offset>12</end_offset>
+      <tag_text>X-Mms-Transaction-Id</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="2">
+      <start_offset>13</start_offset>
+      <end_offset>14</end_offset>
+      <tag_text>X-Mms-MMS-Version</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="3">
+      <start_offset>15</start_offset>
+      <end_offset>53</end_offset>
+      <tag_text>Message-ID</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="4">
+      <start_offset>54</start_offset>
+      <end_offset>59</end_offset>
+      <tag_text>Date</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#333FD7</note_colour>
+    </TAG>
+    <TAG id="5">
+      <start_offset>60</start_offset>
+      <end_offset>84</end_offset>
+      <tag_text>From</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#33D7AA</note_colour>
+    </TAG>
+    <TAG id="6">
+      <start_offset>85</start_offset>
+      <end_offset>107</end_offset>
+      <tag_text>To</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#33A5D7</note_colour>
+    </TAG>
+    <TAG id="7">
+      <start_offset>108</start_offset>
+      <end_offset>109</end_offset>
+      <tag_text>X-mms-Message-Class</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="8">
+      <start_offset>110</start_offset>
+      <end_offset>111</end_offset>
+      <tag_text>X-Mms-Priority</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="9">
+      <start_offset>112</start_offset>
+      <end_offset>113</end_offset>
+      <tag_text>X-Mms-Delivery-Report</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="10">
+      <start_offset>114</start_offset>
+      <end_offset>115</end_offset>
+      <tag_text>X-Mms-Retrieve-Status</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="11">
+      <start_offset>116</start_offset>
+      <end_offset>144</end_offset>
+      <tag_text>X-Mms-Retrieve-Text</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#D73341</note_colour>
+    </TAG>
+    <TAG id="12">
+      <start_offset>145</start_offset>
+      <end_offset>178</end_offset>
+      <tag_text>Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#EC13AC</note_colour>
+    </TAG>
+    <TAG id="13">
+      <start_offset>752</start_offset>
+      <end_offset>243941</end_offset>
+      <tag_text>JPEG Data</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#F400FF</note_colour>
+    </TAG>
+  </filename>
+</wxHexEditor_XML_TAG>
