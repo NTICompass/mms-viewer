@@ -127,5 +127,12 @@
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
+    <TAG id="18">
+      <start_offset>337</start_offset>
+      <end_offset>365</end_offset>
+      <tag_text>Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#EC13AC</note_colour>
+    </TAG>
   </filename>
 </wxHexEditor_XML_TAG>

@@ -73,18 +73,18 @@ class MMSMessage:
 		0x82: ("Cc"),
 		0x83: ("X-Mms-Content-Location"),
 		# http://python-mms.sourceforge.net/api/mms.wsp_pdu.Decoder-class.html#decodeContentTypeValue
-		0x84: ("Content-Type"),
+		0x84: ("Content-Type", "contentType"),
 		0x85: ("Date", 'timestamp'),
-		0x86: ("X-Mms-Delivery-Report", 'boolean'),
+		0x86: ("X-Mms-Delivery-Report", "boolean"),
 		0x87: ("X-Mms-Delivery-Time"),
 		0x88: ("X-Mms-Expiry"),
 		0x89: ("From", 'from'),
-		0x8A: ("X-mms-Message-Class", 'messageClass'),
+		0x8A: ("X-mms-Message-Class", "messageClass"),
 		0x8B: ("Message-ID", 'ascii'),
-		0x8C: ("X-Mms-Message-Type", 'messageType'),
-		0x8D: ("X-Mms-MMS-Version", 'version'),
+		0x8C: ("X-Mms-Message-Type", "messageType"),
+		0x8D: ("X-Mms-MMS-Version", "version"),
 		0x8E: ("X-Mms-Message-Size"),
-		0x8F: ("X-Mms-Priority", 'messagePriority'),
+		0x8F: ("X-Mms-Priority", "messagePriority"),
 		0x90: ("X-Mms-Read-Report"),
 		0x91: ("X-Mms-Report-Allowed"),
 		0x92: ("X-Mms-Response-Status"),
@@ -93,9 +93,9 @@ class MMSMessage:
 		0x95: ("X-Mms-Status"),
 		0x96: ("Subject"),
 		0x97: ("To", 'to'), # Note: There can be multiple "To" values
-		0x98: ("X-Mms-Transaction-Id", 'ascii'),
-		0x99: ("X-Mms-Retrieve-Status", 'boolean'),
-		0x9A: ("X-Mms-Retrieve-Text", 'ascii'),
+		0x98: ("X-Mms-Transaction-Id", "ascii"),
+		0x99: ("X-Mms-Retrieve-Status", "boolean"),
+		0x9A: ("X-Mms-Retrieve-Text", "ascii"),
 		0x9B: ("X-Mms-Read-Status"),
 		0x9C: ("X-Mms-Reply-Charging"),
 		0x9D: ("X-Mms-Reply-Charging-Deadline"),
@@ -224,9 +224,8 @@ class MMSMessage:
 				# Either "Content-general-form" or "Constrained-media"
 				# The 2nd byte tells us whether the content type
 				# is an ascii string, or a byte (to be looked up in a table)
-				#if byte_range.pop(0) <= 0x1F: #Content-general-form
-				#	pass
-				pass
+				print(byte_range)
+				sys.exit(0)
 			elif method == 'from':
 				# The "from" phone number
 				# The 1st byte is the "Address-present-token" (0x80)
