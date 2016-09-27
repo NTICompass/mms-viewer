@@ -154,7 +154,7 @@ class MMSMessage:
 			# Get the header
 			curr_byte = self.data[curr_index]
 			# and its parsing info
-			if len(self.mms_headers[curr_byte]) != 2:
+			if curr_byte == 0x02 or len(self.mms_headers[curr_byte]) != 2:
 				print(mms_result)
 				sys.exit(0)
 			header, method = self.mms_headers[curr_byte]
@@ -224,8 +224,16 @@ class MMSMessage:
 				# Either "Content-general-form" or "Constrained-media"
 				# The 2nd byte tells us whether the content type
 				# is an ascii string, or a byte (to be looked up in a table)
-				print(byte_range)
-				sys.exit(0)
+				if byte_range.startswith(b'\xB3'): # application/vnd.wap.multipart.related
+					# 0x89: Multipart Related Type
+					# 0x8A: Presentation Content ID
+					for content_header in byte_range.lstrip(b'\xB3').rstrip(b'\x00').split(b'\x00'):
+						if content_header.startswith(b'\x89'):
+							value = content_header.lstrip(b'\x89').decode('utf_8')
+						elif content_header.startswith(b'\x8A'):
+							content_id = content_header.lstrip(b'\x8A').decode('utf_8')
+				else:
+					value = ''
 			elif method == 'from':
 				# The "from" phone number
 				# The 1st byte is the "Address-present-token" (0x80)
