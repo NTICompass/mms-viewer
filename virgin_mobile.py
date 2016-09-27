@@ -5,6 +5,7 @@
 """
 import sys, urllib.request
 from datetime import datetime
+from bs4 import BeautifulSoup
 
 class VirginMobile:
 	"""
@@ -67,7 +68,6 @@ class MMSMessage:
 	# tuple: (name, method)
 	# See: http://www.wapforum.org/tech/documents/WAP-230-WSP-20010705-a.pdf (see section 8.4.1.2)
 	# Turns out the 1st byte after the header (which may be *part* of the data), tells us how to interpret the length
-
 	mms_headers = {
 		0x81: ("Bcc"),
 		0x82: ("Cc"),
@@ -147,16 +147,19 @@ class MMSMessage:
 		# Start looping over each byte in the data.
 		# Assume the 1st byte is a header code and then start decoding.
 		# Info on byte/bytearray: https://docs.python.org/3/library/stdtypes.html
-		mms_result = {}
+		mms_headers = {}
+		mms_data = []
 
 		curr_index = 0
+		# First get the headers from the data
 		while curr_index < len(self.data):
-			# Get the header
+			# Get the header...
 			curr_byte = self.data[curr_index]
-			# and its parsing info
-			if curr_byte == 0x02 or len(self.mms_headers[curr_byte]) != 2:
-				print(mms_result)
-				sys.exit(0)
+			# Once we hit a byte not in the header object, then we're done with the headers
+			# Or we've just hit a header I haven't parsed yet
+			if curr_byte not in self.mms_headers or len(self.mms_headers[curr_byte]) != 2:
+				break
+			# ...and its parsing info
 			header, method = self.mms_headers[curr_byte]
 
 			# Decode the value...
@@ -225,13 +228,15 @@ class MMSMessage:
 				# The 2nd byte tells us whether the content type
 				# is an ascii string, or a byte (to be looked up in a table)
 				if byte_range.startswith(b'\xB3'): # application/vnd.wap.multipart.related
-					# 0x89: Multipart Related Type
-					# 0x8A: Presentation Content ID
 					for content_header in byte_range.lstrip(b'\xB3').rstrip(b'\x00').split(b'\x00'):
+						# 0x89: Multipart Related Type
 						if content_header.startswith(b'\x89'):
-							value = content_header.lstrip(b'\x89').decode('utf_8')
+							# Save the content-type separately
+							self.content_type = value = content_header.lstrip(b'\x89').decode('utf_8')
+						# 0x8A: Presentation Content ID
 						elif content_header.startswith(b'\x8A'):
-							content_id = content_header.lstrip(b'\x8A').decode('utf_8')
+							# As well as this value, which I don't know how it's used
+							self.content_id = content_header.lstrip(b'\x8A').decode('utf_8')
 				else:
 					value = ''
 			elif method == 'from':
@@ -244,7 +249,7 @@ class MMSMessage:
 					value = ''
 			elif method == 'to':
 				# This will be an array, just in case there are multiple values
-				value = mms_result[header] if header in mms_result else []
+				value = mms_headers[header] if header in mms_headers else []
 				# Note: value is a *reference*, so we can just update and not set it
 				value.append(byte_range.decode('utf_8'))
 			elif method == 'ascii':
@@ -262,11 +267,19 @@ class MMSMessage:
 				# 0x80 = yes and 0x81 = no
 				value = byte_range == b'\x80'
 
-			if header not in mms_result:
+			if header not in mms_headers:
 				# If this is an array, then all we need is a reference to it
 				# We can append to that and not need to set it back in the object
 				print('Decoded {0}'.format(header))
-				mms_result[header] = value
+				mms_headers[header] = value
+
+		# We've finished the headers, let's move onto the actual data
+		print(mms_headers)
+		# Continue reading bytes, except we now are filling in the data
+		while curr_index < len(self.data):
+			break
+
+		return mms_headers, mms_data
 
 if __name__ == '__main__':
 	phone = VirginMobile('15555555555')
@@ -281,4 +294,6 @@ if __name__ == '__main__':
 
 		# Decode the message
 		decoder = MMSMessage(mms_data)
-		mms_result = decoder.decode()
+		mms_headers, mms_data = decoder.decode()
+
+		print(mms_data)
