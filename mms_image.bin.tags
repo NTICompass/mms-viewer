@@ -93,6 +93,13 @@
       <note_colour>#EC13AC</note_colour>
     </TAG>
     <TAG id="13">
+      <start_offset>258</start_offset>
+      <end_offset>667</end_offset>
+      <tag_text>SMIL+XML</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FF5000</note_colour>
+    </TAG>
+    <TAG id="14">
       <start_offset>752</start_offset>
       <end_offset>243941</end_offset>
       <tag_text>JPEG Data</tag_text>

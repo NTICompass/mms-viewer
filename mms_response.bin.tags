@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wxHexEditor_XML_TAG>
-  <filename path="/home/nticompass/Code/mms-viewer/mms_response.bin">
+  <filename path="/home/nticompass/Code/mms-viewer/mms_response.bin.tags">
     <TAG id="0">
       <start_offset>0</start_offset>
       <end_offset>1</end_offset>
@@ -147,6 +147,20 @@
       <tag_text>Content-Type</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#EC13AC</note_colour>
+    </TAG>
+    <TAG id="21">
+      <start_offset>442</start_offset>
+      <end_offset>759</end_offset>
+      <tag_text>SMIL+XML</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FF5000</note_colour>
+    </TAG>
+    <TAG id="22">
+      <start_offset>825</start_offset>
+      <end_offset>913</end_offset>
+      <tag_text>TXT Data</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#88DF64</note_colour>
     </TAG>
   </filename>
 </wxHexEditor_XML_TAG>
