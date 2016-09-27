@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wxHexEditor_XML_TAG>
-  <filename path="/home/nticompass/Code/mms-viewer/mms_response.tags">
+  <filename path="/home/nticompass/Code/mms-viewer/mms_response.bin.tags">
     <TAG id="0">
       <start_offset>0</start_offset>
       <end_offset>1</end_offset>
@@ -66,68 +66,82 @@
     </TAG>
     <TAG id="9">
       <start_offset>162</start_offset>
-      <end_offset>230</end_offset>
+      <end_offset>184</end_offset>
       <tag_text>To</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#33A5D7</note_colour>
     </TAG>
     <TAG id="10">
+      <start_offset>185</start_offset>
+      <end_offset>207</end_offset>
+      <tag_text>To</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#33A5D7</note_colour>
+    </TAG>
+    <TAG id="11">
+      <start_offset>208</start_offset>
+      <end_offset>230</end_offset>
+      <tag_text>To</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#33A5D7</note_colour>
+    </TAG>
+    <TAG id="12">
       <start_offset>231</start_offset>
       <end_offset>253</end_offset>
       <tag_text>To</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#33A5D7</note_colour>
     </TAG>
-    <TAG id="11">
+    <TAG id="13">
       <start_offset>254</start_offset>
       <end_offset>276</end_offset>
       <tag_text>To</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#33A5D7</note_colour>
     </TAG>
-    <TAG id="12">
+    <TAG id="14">
       <start_offset>277</start_offset>
       <end_offset>299</end_offset>
       <tag_text>To</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#33A5D7</note_colour>
     </TAG>
-    <TAG id="13">
+    <TAG id="15">
       <start_offset>300</start_offset>
       <end_offset>301</end_offset>
       <tag_text>X-mms-Message-Class</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
-    <TAG id="14">
+    <TAG id="16">
       <start_offset>302</start_offset>
       <end_offset>303</end_offset>
       <tag_text>X-Mms-Priority</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
-    <TAG id="15">
+    <TAG id="17">
       <start_offset>304</start_offset>
       <end_offset>305</end_offset>
       <tag_text>X-Mms-Delivery-Report</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
-    <TAG id="16">
+    <TAG id="18">
       <start_offset>306</start_offset>
       <end_offset>307</end_offset>
       <tag_text>X-Mms-Retrieve-Status</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
-    <TAG id="17">
+    <TAG id="19">
       <start_offset>308</start_offset>
       <end_offset>336</end_offset>
       <tag_text>X-Mms-Retrieve-Text</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#D73341</note_colour>
     </TAG>
-    <TAG id="18">
+    <TAG id="20">
       <start_offset>337</start_offset>
       <end_offset>365</end_offset>
       <tag_text>Content-Type</tag_text>

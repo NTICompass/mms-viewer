@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wxHexEditor_XML_TAG>
-  <filename path="/home/nticompass/Code/mms-viewer/mms_image.tags">
+  <filename path="/home/nticompass/Code/mms-viewer/mms_image.bin">
     <TAG id="0">
       <start_offset>0</start_offset>
       <end_offset>1</end_offset>
