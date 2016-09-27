@@ -64,6 +64,7 @@ class MMSMessage:
 	# From: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
 	# See also: https://www.wireshark.org/docs/dfref/m/mmse.html
 	# Decoding example: http://support.nowsms.com/discus/messages/485/6597538470-D8751867A0B-13774.txt
+	# MMS Content Type info: http://www.nowsms.com/send-an-mms-to-a-java-appmidlet
 	# Each header value has its own unique way of being decoded
 	# tuple: (name, method)
 	# See: http://www.wapforum.org/tech/documents/WAP-230-WSP-20010705-a.pdf (see section 8.4.1.2)
@@ -296,4 +297,4 @@ if __name__ == '__main__':
 		decoder = MMSMessage(mms_data)
 		mms_headers, mms_data = decoder.decode()
 
-		print(mms_data)
+		print(decoder.content_type, mms_data)
