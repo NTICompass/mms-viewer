@@ -3,7 +3,7 @@
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import sys, urllib.request
+import sys, urllib.request, binascii
 from datetime import datetime
 from bs4 import BeautifulSoup
 
@@ -139,6 +139,16 @@ class MMSMessage:
 		0x80: 'Low',
 		0x81: 'Normal',
 		0x82: 'High'
+	}
+
+	# Needed for data decoding
+	charsets = {
+		0xEA: 'utf_8',
+		0x83: 'ascii',
+		0x84: 'iso8859_1',
+		0x85: 'iso8859_2',
+		0x86: 'iso8859_3',
+		0x87: 'iso8859_4'
 	}
 
 	def __init__(self, mms):
@@ -277,8 +287,54 @@ class MMSMessage:
 		# We've finished the headers, let's move onto the actual data
 		print(mms_headers)
 		# Continue reading bytes, except we now are filling in the data
-		while curr_index < len(self.data):
-			break
+		# The data is application/vnd.wap.multipart.related
+		# How many "parts" are in this "multipart" data?
+		parts = self.data[curr_index]
+		curr_index += 1
+
+		# Loop over each part and get its data
+		for x in range(0, parts):
+			# The next byte tells us the length of the content type header
+			data_header_length = self.data[curr_index]
+			curr_index += 1
+
+			# The next 2 bytes are the content length
+			# TODO: WELL!  Not the next 2 bytes, the next X bytes.
+			# We need to read bytes and convert them into octets until
+			# the  "continue bit" is 0
+
+			# Except they are in a weird format
+			# The format is described in WAP-230 Section 8.1.2
+			# "Variable Length Unsigned Ints"
+			# Basically, you encode each hexit as binary,
+			# break then into 7-bit chunks (the 1st bit is the "continue bit")
+			# Then you glue them back together
+			# Ex: 82 3F => 1000 0010 0011 1111
+			# 1|0000010 0|0111111 => 00 0001 0011 1111 => 0x013F => 319
+			variable_length = self.data[curr_index:curr_index+2]
+			curr_index += 2
+
+			# There's obviously a better way to do this, but I don't really know what it is
+			binary_length = bin(int(binascii.hexlify(variable_length),16)).replace('0b', '')
+			octets = [binary_length[x:x+8] for x in range(0, len(binary_length), 8)]
+			remaining_bits = ''
+
+			for b in octets:
+				# This is the continue bit.
+				# Every octet should start with a 1,
+				# Except the last one.  I shoud probably check this...
+				# Or I can just ignore it
+				cont = b[0]
+				remaining_bits += b[1:]
+
+			content_length = int(remaining_bits, 2)
+
+			# Now, we get the content-type.  The next byte is hoy many bytes to read.
+			content_type_length = self.data[curr_index]
+			curr_index += 1
+
+			print(content_length)
+			sys.exit(0)
 
 		return mms_headers, mms_data
 

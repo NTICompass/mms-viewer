@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wxHexEditor_XML_TAG>
-  <filename path="/home/nticompass/Code/mms-viewer/mms_response.bin">
+  <filename path="/home/nticompass/Code/mms-viewer/mms_response.bin.tags">
     <TAG id="0">
       <start_offset>0</start_offset>
       <end_offset>1</end_offset>
@@ -149,13 +149,55 @@
       <note_colour>#EC13AC</note_colour>
     </TAG>
     <TAG id="21">
+      <start_offset>366</start_offset>
+      <end_offset>366</end_offset>
+      <tag_text>Number of Contents</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="22">
+      <start_offset>367</start_offset>
+      <end_offset>367</end_offset>
+      <tag_text>Data Header Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="23">
+      <start_offset>368</start_offset>
+      <end_offset>369</end_offset>
+      <tag_text>Content-Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="24">
+      <start_offset>370</start_offset>
+      <end_offset>370</end_offset>
+      <tag_text>Data Content-Type Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="25">
+      <start_offset>371</start_offset>
+      <end_offset>399</end_offset>
+      <tag_text>Data Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="26">
+      <start_offset>400</start_offset>
+      <end_offset>441</end_offset>
+      <tag_text>Content-ID</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="27">
       <start_offset>442</start_offset>
-      <end_offset>759</end_offset>
+      <end_offset>760</end_offset>
       <tag_text>SMIL+XML</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#FF5000</note_colour>
     </TAG>
-    <TAG id="22">
+    <TAG id="28">
       <start_offset>825</start_offset>
       <end_offset>913</end_offset>
       <tag_text>TXT Data</tag_text>
