@@ -308,15 +308,17 @@ class MMSMessage:
 				# Get the "message priority"
 				value = self.mms_message_priority[byte_range]
 			elif method == 'contentType':
-				# Look uo the MIME type in the table
+				# Look up the MIME type in the table
+				# This value may be a single byte
+				byte_range = bytes([byte_range]) if type(byte_range) is int else byte_range[0]
 				if byte_range[0] in self.mime_types:
-					value = self.mime_types[byte_range[0]]
+					value = self.mms_content_type = self.mime_types[byte_range[0]]
 
 					# Read the type of the encapsulated data
 					for content_header in byte_range[1:].rstrip(b'\x00').split(b'\x00'):
 						# 0x89: Multipart Related Type
 						if content_header.startswith(b'\x89'):
-							# Save the content-type separately
+							# Save the encapsulated content-type separately
 							self.content_type = content_header.lstrip(b'\x89').decode('utf_8')
 						# 0x8A: Presentation Content ID
 						elif content_header.startswith(b'\x8A'):
@@ -361,119 +363,133 @@ class MMSMessage:
 
 		# We've finished the headers, let's move onto the actual data
 		# Continue reading bytes, except we now are filling in the data
-		# The data is application/vnd.wap.multipart.related
-		# How many "parts" are in this "multipart" data?
-		parts = self.data[curr_index]
-		curr_index += 1
-
-		# Loop over each part and get its data
-		for x in range(0, parts):
-			# The next byte tells us the length of the content type header
-			data_header_length = self.data[curr_index]
-			curr_index += 1
-			data_header_index = 0
-
-			# The next X bytes are the content length
-			# We need to read bytes and convert them into octets until
-			# the "continue bit" is 0.
-			# The format is described in WAP-230 Section 8.1.2
-			# "Variable Length Unsigned Ints"
-			# Basically, you encode each hexit as binary,
-			# break then into 7-bit chunks (the 1st bit is the "continue bit")
-			# Then you glue them back together
-			# Ex: 82 3F => 1000 0010 0011 1111
-			# 1|0000010 0|0111111 => 00 0001 0011 1111 => 0x013F => 319
-			cont_bit = True
-			remaining_bits = []
-
-			while cont_bit:
-				variable_length = self.data[curr_index]
-				curr_index += 1
-
-				# There's obviously a better way to do this, but I don't really know what it is
-				binary_length = bin(variable_length).lstrip('0b').zfill(8)
-
-				# Check the "continue bit"
-				cont_bit = (binary_length[0] == '1')
-				remaining_bits.append(binary_length[1:])
-
-			# Put the values together and read it as an int
-			content_length = int(''.join(remaining_bits), 2)
-
-			# Get the full "data header", which contains the
-			# Content-Type and Content-ID
-			data_header = self.data[curr_index:curr_index+data_header_length]
-			curr_index += data_header_length
-
-			# Now, we get the content-type.
-			# Read the next byte...
-			# 00-1E: Read that many bytes
-			# 1F: Next byte is length
-			# This range contains the content-type and its charset
-			if 0x00 <= data_header[data_header_index] <= 0x1E:
-				content_type_length = data_header[data_header_index]
-				data_header_index += 1
-			elif data_header[data_header_index] == 0x1F:
-				content_type_length = data_header[data_header_index+1]
-				data_header_index += 2
-
-			content_type_range = data_header[data_header_index:data_header_index+content_type_length]
-			data_header_index += content_type_length
-
-			# Get the content type
-			# How should we intrepret this?
-			# Check the 1st byte:
-			# 20-7F: Null-terminated string
-			# 80-FF: This byte is the data
-			if 0x20 <= content_type_range[0] <= 0x7F:
-				# Read until we hit a null byte (0x00)
-				data_content_type_length = content_type_range.index(0x00)
-
-				# self.content_type should be application/smil
-				# The 1st part will be this, but the 2nd can be anything
-				data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
-
-				# What charset is being used?
-				data_charset = self.charsets[content_type_range[data_content_type_length+1]]
-
-				# Also included is the "start" point of the content type
-				data_content_extra = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
-			elif 0x80 <= content_type_range[0] <= 0xFF:
-				# Look it up in the MIME type table
-				data_content_type = self.mime_types[content_type_range[0]]
-
-				# What charset is being used?
-				data_charset = self.charsets[content_type_range[2] if content_type_range[1] == 0x81 else content_type_range[1]]
-
-				# There is more data included after.  0x85 seems to be the "file name", again
-				data_content_extra = (content_type_range[3:] if content_type_range[1] == 0x81 else content_type_range[2:]).lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
-
-			# The next byte should be 0xC0
-			# Followed by the "Content-ID" (this may not match the one from earlier)
-			# This is just the rest of the remaining bytes before the data
-			# I don't actually know what it is or how to decode it
-			# It seems to contain the "file name", except multiple times for some reason
-			# We've read the "content-type length" (1 byte) and the "content-type"
-			data_content_id = data_header[data_header_index:]
-
-			# Split this into multiple parts
-			# The 1st seems to be a consistent 0xC0 0x22
-			# With the file name inside `<>`
-			data_content_id = data_content_id.rstrip(b'\x00').split(b'\x00')
-			file_name = data_content_id[0].lstrip(b'\xc0\x22').decode('utf_8')[1:-1]
-
-			# Ok, we're done with the content headers.
-			# We know the length of the data, let's read that many bytes!
-			the_data = content_type_length = self.data[curr_index:curr_index+content_length].decode(data_charset)
-			curr_index += content_length
+		# The data is (probably) application/vnd.wap.multipart.related
+		# It may not actually be.  In the case of an error, it's just text/plain
+		if self.mms_content_type == 'text/plain':
+			# This is just a txt file.
+			# Just read the rest of the bytes and decode
+			the_data = content_type_length = self.data[curr_index:].decode('utf_8')
 
 			# Append the data to the array of parts
 			mms_data.append({
-				'fileName': file_name,
-				'contentType': data_content_type,
-				'contentLength': content_length,
-				'data': the_data if data_content_type != 'image/jpeg' else ''
+				'fileName': None,
+				'contentType': self.mms_content_type,
+				'contentLength': len(the_data),
+				'data': the_data
 			})
+		elif self.mms_content_type == 'application/vnd.wap.multipart.related':
+			# How many "parts" are in this "multipart" data?
+			parts = self.data[curr_index]
+			curr_index += 1
+
+			# Loop over each part and get its data
+			for x in range(0, parts):
+				# The next byte tells us the length of the content type header
+				data_header_length = self.data[curr_index]
+				curr_index += 1
+				data_header_index = 0
+
+				# The next X bytes are the content length
+				# We need to read bytes and convert them into octets until
+				# the "continue bit" is 0.
+				# The format is described in WAP-230 Section 8.1.2
+				# "Variable Length Unsigned Ints"
+				# Basically, you encode each hexit as binary,
+				# break then into 7-bit chunks (the 1st bit is the "continue bit")
+				# Then you glue them back together
+				# Ex: 82 3F => 1000 0010 0011 1111
+				# 1|0000010 0|0111111 => 00 0001 0011 1111 => 0x013F => 319
+				cont_bit = True
+				remaining_bits = []
+
+				while cont_bit:
+					variable_length = self.data[curr_index]
+					curr_index += 1
+
+					# There's obviously a better way to do this, but I don't really know what it is
+					binary_length = bin(variable_length).lstrip('0b').zfill(8)
+
+					# Check the "continue bit"
+					cont_bit = (binary_length[0] == '1')
+					remaining_bits.append(binary_length[1:])
+
+				# Put the values together and read it as an int
+				content_length = int(''.join(remaining_bits), 2)
+
+				# Get the full "data header", which contains the
+				# Content-Type and Content-ID
+				data_header = self.data[curr_index:curr_index+data_header_length]
+				curr_index += data_header_length
+
+				# Now, we get the content-type.
+				# Read the next byte...
+				# 00-1E: Read that many bytes
+				# 1F: Next byte is length
+				# This range contains the content-type and its charset
+				if 0x00 <= data_header[data_header_index] <= 0x1E:
+					content_type_length = data_header[data_header_index]
+					data_header_index += 1
+				elif data_header[data_header_index] == 0x1F:
+					content_type_length = data_header[data_header_index+1]
+					data_header_index += 2
+
+				content_type_range = data_header[data_header_index:data_header_index+content_type_length]
+				data_header_index += content_type_length
+
+				# Get the content type
+				# How should we intrepret this?
+				# Check the 1st byte:
+				# 20-7F: Null-terminated string
+				# 80-FF: This byte is the data
+				if 0x20 <= content_type_range[0] <= 0x7F:
+					# Read until we hit a null byte (0x00)
+					data_content_type_length = content_type_range.index(0x00)
+
+					# self.content_type should be application/smil
+					# The 1st part will be this, but the 2nd can be anything
+					data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
+
+					# What charset is being used?
+					data_charset = self.charsets[content_type_range[data_content_type_length+1]]
+
+					# Also included is the "start" point of the content type
+					data_content_extra = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+				elif 0x80 <= content_type_range[0] <= 0xFF:
+					# Look it up in the MIME type table
+					data_content_type = self.mime_types[content_type_range[0]]
+
+					# What charset is being used?
+					data_charset = self.charsets[content_type_range[2] if content_type_range[1] == 0x81 else content_type_range[1]]
+
+					# There is more data included after.  0x85 seems to be the "file name", again
+					data_content_extra = (content_type_range[3:] if content_type_range[1] == 0x81 else content_type_range[2:]).lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
+
+				# The next byte should be 0xC0
+				# Followed by the "Content-ID" (this may not match the one from earlier)
+				# This is just the rest of the remaining bytes before the data
+				# I don't actually know what it is or how to decode it
+				# It seems to contain the "file name", except multiple times for some reason
+				# We've read the "content-type length" (1 byte) and the "content-type"
+				data_content_id = data_header[data_header_index:]
+
+				# Split this into multiple parts
+				# The 1st seems to be a consistent 0xC0 0x22
+				# With the file name inside `<>`
+				data_content_id = data_content_id.rstrip(b'\x00').split(b'\x00')
+				file_name = data_content_id[0].lstrip(b'\xc0\x22').decode('utf_8')[1:-1]
+
+				# Ok, we're done with the content headers.
+				# We know the length of the data, let's read that many bytes!
+				the_data = content_type_length = self.data[curr_index:curr_index+content_length].decode(data_charset)
+				curr_index += content_length
+
+				# Append the data to the array of parts
+				mms_data.append({
+					'fileName': file_name,
+					'contentType': data_content_type,
+					'contentLength': content_length,
+					'data': the_data if data_content_type != 'image/jpeg' else ''
+				})
 
 		return mms_headers, mms_data
 
