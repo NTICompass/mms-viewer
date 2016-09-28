@@ -7,6 +7,8 @@
 import sys, argparse, urllib.request, binascii
 from datetime import datetime
 from bs4 import BeautifulSoup
+from PIL import Image # Pillow
+from io import BytesIO
 
 version = "0.1 alpha"
 
@@ -358,7 +360,6 @@ class MMSMessage:
 			if header not in mms_headers:
 				# If this is an array, then all we need is a reference to it
 				# We can append to that and not need to set it back in the object
-				print('Decoded {0}'.format(header))
 				mms_headers[header] = value
 
 		# We've finished the headers, let's move onto the actual data
@@ -480,15 +481,23 @@ class MMSMessage:
 
 				# Ok, we're done with the content headers.
 				# We know the length of the data, let's read that many bytes!
-				the_data = content_type_length = self.data[curr_index:curr_index+content_length].decode(data_charset)
+				the_data = self.data[curr_index:curr_index+content_length]
 				curr_index += content_length
+
+				# "Decode" the data, or wrap it in an object
+				if data_content_type.startswith('image/'):
+					the_data = Image.open(BytesIO(the_data))
+				elif data_content_type == 'application/smil':
+					the_data = BeautifulSoup(the_data.decode(data_charset), 'xml')
+				else:
+					the_data = the_data.decode(data_charset)
 
 				# Append the data to the array of parts
 				mms_data.append({
 					'fileName': file_name,
 					'contentType': data_content_type,
 					'contentLength': content_length,
-					'data': the_data if data_content_type != 'image/jpeg' else ''
+					'data': the_data
 				})
 
 		return mms_headers, mms_data
@@ -504,6 +513,8 @@ if __name__ == '__main__':
 	parser.add_argument("file_or_phone", help="MMS File or phone number")
 	parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
 
+	parser.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
+
 	args = parser.parse_args()
 
 	try:
@@ -513,16 +524,21 @@ if __name__ == '__main__':
 		else:
 			message = open(args.file_or_phone, 'rb')
 	except urllib.error.URLError as error:
-		print(error.reason)
+		print('MMS Download Failed:', error.reason)
 	else:
-		# The data has a Content-Type of application/vnd.wap.mms-message
+		# Get the data from the resource
 		mms_data = message.read()
 
 		# Decode the message
 		decoder = MMSMessage(mms_data)
 		mms_headers, mms_data = decoder.decode()
 
+		# Close the file/urllib.request object
 		message.close()
 
 		print(mms_headers)
 		print(mms_data)
+
+		# Extract image file(s)
+		if args.extract:
+			[file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"]) for file_data in mms_data if file_data['contentType'].startswith('image/')]
