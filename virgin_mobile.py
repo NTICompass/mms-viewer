@@ -366,8 +366,6 @@ class MMSMessage:
 				mms_headers[header] = value
 
 		# We've finished the headers, let's move onto the actual data
-		print(mms_headers)
-
 		# Continue reading bytes, except we now are filling in the data
 		# The data is application/vnd.wap.multipart.related
 		# How many "parts" are in this "multipart" data?
@@ -379,6 +377,7 @@ class MMSMessage:
 			# The next byte tells us the length of the content type header
 			data_header_length = self.data[curr_index]
 			curr_index += 1
+			data_header_index = 0
 
 			# The next X bytes are the content length
 			# We need to read bytes and convert them into octets until
@@ -407,13 +406,25 @@ class MMSMessage:
 			# Put the values together and read it as an int
 			content_length = int(''.join(remaining_bits), 2)
 
-			# Now, we get the content-type.  The next byte is how many bytes to read.
-			# This range contains the content-type and its charset
-			content_type_length = self.data[curr_index]
-			curr_index += 1
+			# Get the full "data header", which contains the
+			# Content-Type and Content-ID
+			data_header = self.data[curr_index:curr_index+data_header_length]
+			curr_index += data_header_length
 
-			content_type_range = self.data[curr_index:curr_index+content_type_length]
-			curr_index += content_type_length
+			# Now, we get the content-type.
+			# Read the next byte...
+			# 00-1E: Read that many bytes
+			# 1F: Next byte is length
+			# This range contains the content-type and its charset
+			if 0x00 <= data_header[data_header_index] <= 0x1E:
+				content_type_length = data_header[data_header_index]
+				data_header_index += 1
+			elif data_header[data_header_index] == 0x1F:
+				content_type_length = data_header[data_header_index+1]
+				data_header_index += 2
+
+			content_type_range = data_header[data_header_index:data_header_index+content_type_length]
+			data_header_index += content_type_length
 
 			# Get the content type
 			# How should we intrepret this?
@@ -449,9 +460,7 @@ class MMSMessage:
 			# I don't actually know what it is or how to decode it
 			# It seems to contain the "file name", except multiple times for some reason
 			# We've read the "content-type length" (1 byte) and the "content-type"
-			remaining_length = data_header_length-1-content_type_length
-			data_content_id = self.data[curr_index:curr_index+remaining_length]
-			curr_index += remaining_length
+			data_content_id = data_header[data_header_index:]
 
 			# Split this into multiple parts
 			# The 1st seems to be a consistent 0xC0 0x22
@@ -489,4 +498,5 @@ if __name__ == '__main__':
 		decoder = MMSMessage(mms_data)
 		mms_headers, mms_data = decoder.decode()
 
+		print(mms_headers)
 		print(mms_data)
