@@ -271,7 +271,8 @@ class MMSMessage:
 				# TODO: There's got to be a better way to convert a
 				# bytearray/bytes object into an int
 				# ie: convert b'\x57\xe2\xa2\x49' to 0x57e2a249 (1474470473)
-				timestamp = int(''.join(map(hex, byte_range)).replace('0x', ''), 16)
+				#timestamp = int(''.join(map(hex, byte_range)).replace('0x', ''), 16)
+				timestamp = int(binascii.hexlify(byte_range), 16)
 				value = datetime.fromtimestamp(timestamp)
 			elif method == 'boolean':
 				# A "boolean" is a yes/no value
