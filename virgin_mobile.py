@@ -469,7 +469,7 @@ class MMSMessage:
 				'fileName': file_name,
 				'contentType': data_content_type,
 				'contentLength': content_length,
-				'data': the_data
+				'data': the_data if data_content_type != 'image/jpeg' else ''
 			})
 
 		return mms_headers, mms_data
@@ -478,7 +478,7 @@ if __name__ == '__main__':
 	phone = VirginMobile('15555555555')
 	try:
 		#message = phone.download('mms-id', proxy=False)
-		message = open('mms_response.bin', 'rb')
+		message = open('mms_image.bin', 'rb')
 	except urllib.error.URLError as error:
 		print(error.reason)
 	else:
