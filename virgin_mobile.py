@@ -151,6 +151,86 @@ class MMSMessage:
 		0x87: 'iso8859_4'
 	}
 
+	# Also needed for data decoding
+	mime_types = {
+		0x80: '*/*',
+		0x81: 'text/*',
+		0x82: 'text/html',
+		0x83: 'text/plain',
+		0x84: 'text/x-hdml',
+		0x85: 'text/x-ttml',
+		0x86: 'text/x-vCalendar',
+		0x87: 'text/x-vCard',
+		0x88: 'text/vnd.wap.wml',
+		0x89: 'text/vnd.wap.wmlscript',
+		0x8A: 'text/vnd.wap.wta-event',
+		0x8B: 'multipart/*',
+		0x8C: 'multipart/mixed',
+		0x8D: 'multipart/form-data',
+		0x8E: 'multipart/byterantes',
+		0x8F: 'multipart/alternative',
+		0x90: 'application/*',
+		0x91: 'application/java-vm',
+		0x92: 'application/x-www-form-urlencoded',
+		0x93: 'application/x-hdmlc',
+		0x94: 'application/vnd.wap.wmlc',
+		0x95: 'application/vnd.wap.wmlscriptc',
+		0x96: 'application/vnd.wap.wta-eventc',
+		0x97: 'application/vnd.wap.uaprof',
+		0x98: 'application/vnd.wap.wtls-ca-certificate',
+		0x99: 'application/vnd.wap.wtls-user-certificate',
+		0x9A: 'application/x-x509-ca-cert',
+		0x9B: 'application/x-x509-user-cert',
+		0x9C: 'image/*',
+		0x9D: 'image/gif',
+		0x9E: 'image/jpeg',
+		0x9F: 'image/tiff',
+		0xA0: 'image/png',
+		0xA1: 'image/vnd.wap.wbmp',
+		0xA2: 'application/vnd.wap.multipart.*',
+		0xA3: 'application/vnd.wap.multipart.mixed',
+		0xA4: 'application/vnd.wap.multipart.form-data',
+		0xA5: 'application/vnd.wap.multipart.byteranges',
+		0xA6: 'application/vnd.wap.multipart.alternative',
+		0xA7: 'application/xml',
+		0xA8: 'text/xml',
+		0xA9: 'application/vnd.wap.wbxml',
+		0xAA: 'application/x-x968-cross-cert',
+		0xAB: 'application/x-x968-ca-cert',
+		0xAC: 'application/x-x968-user-cert',
+		0xAD: 'text/vnd.wap.si',
+		0xAE: 'application/vnd.wap.sic',
+		0xAF: 'text/vnd.wap.sl',
+		0xB0: 'application/vnd.wap.slc',
+		0xB1: 'text/vnd.wap.co',
+		0xB2: 'application/vnd.wap.coc',
+		0xB3: 'application/vnd.wap.multipart.related',
+		0xB4: 'application/vnd.wap.sia',
+		0xB5: 'text/vnd.wap.connectivity-xml',
+		0xB6: 'application/vnd.wap.connectivity-wbxml',
+		0xB7: 'application/pkcs7-mime',
+		0xB8: 'application/vnd.wap.hashed-certificate',
+		0xB9: 'application/vnd.wap.signed-certificate',
+		0xBA: 'application/vnd.wap.cert-response',
+		0xBB: 'application/xhtml+xml',
+		0xBC: 'application/wml+xml',
+		0xBD: 'text/css',
+		0xBE: 'application/vnd.wap.mms-message',
+		0xBF: 'application/vnd.wap.rollover-certificate',
+		0xC0: 'application/vnd.wap.locc+wbxml',
+		0xC1: 'application/vnd.wap.loc+xml',
+		0xC2: 'application/vnd.syncml.dm+wbxml',
+		0xC3: 'application/vnd.syncml.dm+xml',
+		0xC4: 'application/vnd.syncml.notification',
+		0xC5: 'application/vnd.wap.xhtml+xml',
+		0xC6: 'application/vnd.wv.csp.cir',
+		0xC7: 'application/vnd.oma.dd+xml',
+		0xC8: 'application/vnd.oma.drm.message',
+		0xC9: 'application/vnd.oma.drm.content',
+		0xCA: 'application/vnd.oma.drm.rights+xml',
+		0xCB: 'application/vnd.oma.drm.rights+wbxml'
+	}
+
 	def __init__(self, mms):
 		self.data = mms
 
@@ -234,16 +314,16 @@ class MMSMessage:
 				# Get the "message priority"
 				value = self.mms_message_priority[byte_range]
 			elif method == 'contentType':
-				# The 1st byte tells us how to interpret the content type
-				# Either "Content-general-form" or "Constrained-media"
-				# The 2nd byte tells us whether the content type
-				# is an ascii string, or a byte (to be looked up in a table)
-				if byte_range.startswith(b'\xB3'): # application/vnd.wap.multipart.related
-					for content_header in byte_range.lstrip(b'\xB3').rstrip(b'\x00').split(b'\x00'):
+				# Look uo the MIME type in the table
+				if byte_range[0] in self.mime_types:
+					value = self.mime_types[byte_range[0]]
+
+					# Read the type of the encapsulated data
+					for content_header in byte_range[1:].rstrip(b'\x00').split(b'\x00'):
 						# 0x89: Multipart Related Type
 						if content_header.startswith(b'\x89'):
 							# Save the content-type separately
-							self.content_type = value = content_header.lstrip(b'\x89').decode('utf_8')
+							self.content_type = content_header.lstrip(b'\x89').decode('utf_8')
 						# 0x8A: Presentation Content ID
 						elif content_header.startswith(b'\x8A'):
 							# As well as this value, which I don't know how it's used
@@ -287,6 +367,7 @@ class MMSMessage:
 
 		# We've finished the headers, let's move onto the actual data
 		print(mms_headers)
+
 		# Continue reading bytes, except we now are filling in the data
 		# The data is application/vnd.wap.multipart.related
 		# How many "parts" are in this "multipart" data?
@@ -327,10 +408,55 @@ class MMSMessage:
 			content_length = int(''.join(remaining_bits), 2)
 
 			# Now, we get the content-type.  The next byte is how many bytes to read.
+			# This range contains the content-type and its charset
 			content_type_length = self.data[curr_index]
 			curr_index += 1
 
-			print(content_length)
+			content_type_range = self.data[curr_index:curr_index+content_type_length]
+			curr_index += content_type_length
+
+			# Get the content type
+			# Read until we hit a null byte (0x00)
+			data_content_type_length = content_type_range.index(0x00)
+			data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
+			# self.content_type should be application/smil
+			# The 1st part will be this, but the 2nd can be anything
+
+			# What charset is being used?
+			data_charset = self.charsets[content_type_range[data_content_type_length+1]]
+
+			# Also included is the "start" point of the content type
+			data_content_start = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+
+			# The next byte should be 0xC0
+			# Followed by the "Content-ID" (this may not match the one from earlier)
+			# This is just the rest of the remaining bytes before the data
+			# I don't actually know what it is or how to decode it
+			# It seems to contain the "file name", except multiple times for some reason
+			remaining_length = data_header_length-len(remaining_bits)-content_type_length+1
+			data_content_id = self.data[curr_index:curr_index+remaining_length]
+			curr_index += remaining_length
+
+			# Split this into multiple parts
+			# The 1st seems to be a consistent 0xC0 0x22
+			# With the file name inside `<>`
+			data_content_id = data_content_id.rstrip(b'\x00').split(b'\x00')
+			file_name = data_content_id[0].lstrip(b'\xc0\x22').decode('utf_8')[1:-1]
+
+			# Ok, we're done with the content headers.
+			# We know the length of the data, let's read that many bytes!
+			the_data = content_type_length = self.data[curr_index:curr_index+content_length].decode(data_charset)
+			curr_index += content_length
+
+			# Append the data to the array of parts
+			mms_data.append({
+				'fileName': file_name,
+				'contentType': data_content_type,
+				'contentLength': content_length,
+				'data': the_data
+			})
+
+			print(mms_data)
 			sys.exit(0)
 
 		return mms_headers, mms_data
