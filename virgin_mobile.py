@@ -299,12 +299,9 @@ class MMSMessage:
 			data_header_length = self.data[curr_index]
 			curr_index += 1
 
-			# The next 2 bytes are the content length
-			# TODO: WELL!  Not the next 2 bytes, the next X bytes.
+			# The next X bytes are the content length
 			# We need to read bytes and convert them into octets until
-			# the  "continue bit" is 0
-
-			# Except they are in a weird format
+			# the "continue bit" is 0.
 			# The format is described in WAP-230 Section 8.1.2
 			# "Variable Length Unsigned Ints"
 			# Basically, you encode each hexit as binary,
@@ -312,25 +309,24 @@ class MMSMessage:
 			# Then you glue them back together
 			# Ex: 82 3F => 1000 0010 0011 1111
 			# 1|0000010 0|0111111 => 00 0001 0011 1111 => 0x013F => 319
-			variable_length = self.data[curr_index:curr_index+2]
-			curr_index += 2
+			cont_bit = True
+			remaining_bits = []
 
-			# There's obviously a better way to do this, but I don't really know what it is
-			binary_length = bin(int(binascii.hexlify(variable_length),16)).replace('0b', '')
-			octets = [binary_length[x:x+8] for x in range(0, len(binary_length), 8)]
-			remaining_bits = ''
+			while cont_bit:
+				variable_length = self.data[curr_index]
+				curr_index += 1
 
-			for b in octets:
-				# This is the continue bit.
-				# Every octet should start with a 1,
-				# Except the last one.  I shoud probably check this...
-				# Or I can just ignore it
-				cont = b[0]
-				remaining_bits += b[1:]
+				# There's obviously a better way to do this, but I don't really know what it is
+				binary_length = bin(variable_length).lstrip('0b').zfill(8)
 
-			content_length = int(remaining_bits, 2)
+				# Check the "continue bit"
+				cont_bit = (binary_length[0] == '1')
+				remaining_bits.append(binary_length[1:])
 
-			# Now, we get the content-type.  The next byte is hoy many bytes to read.
+			# Put the values together and read it as an int
+			content_length = int(''.join(remaining_bits), 2)
+
+			# Now, we get the content-type.  The next byte is how many bytes to read.
 			content_type_length = self.data[curr_index]
 			curr_index += 1
 
