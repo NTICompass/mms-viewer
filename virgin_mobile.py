@@ -513,6 +513,7 @@ if __name__ == '__main__':
 	parser.add_argument("file_or_phone", help="MMS File or phone number")
 	parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
 
+	parser.add_argument('--debug', help="Print debugging info", action="store_true")
 	parser.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
 
 	args = parser.parse_args()
@@ -536,9 +537,27 @@ if __name__ == '__main__':
 		# Close the file/urllib.request object
 		message.close()
 
-		print(mms_headers)
-		print(mms_data)
+		if args.debug:
+			print(mms_headers)
+			print(mms_data)
 
-		# Extract image file(s)
-		if args.extract:
-			[file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"]) for file_data in mms_data if file_data['contentType'].startswith('image/')]
+		# Did we get a successful message or an error?
+		if mms_headers['Content-Type'] == 'text/plain':
+			# MMS message contains an error message
+			print('MMS Error:', mms_data[0]['data'])
+		elif mms_headers['Content-Type'] == 'application/vnd.wap.multipart.related':
+			# Print out some of the more important headers
+			print("From:\n\t", mms_headers['From'])
+			print("To:\n\t", mms_headers['To'])
+			print("Date:\n\t", mms_headers['Date'].strftime('%c'))
+			print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
+
+			# Loop over the data and decide what to do with it
+			for file_data in mms_data:
+				# We have an image.  Should we extract it?
+				if file_data['contentType'].startswith('image/') and args.extract:
+					# TODO: This may not be a JPEG file, but I'm pretty sure it always is.
+					file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
+				# This is just a text, display it
+				elif file_data['contentType'] == 'text/plain':
+					print("\n", file_data['data'])
