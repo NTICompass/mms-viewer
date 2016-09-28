@@ -310,7 +310,7 @@ class MMSMessage:
 			elif method == 'contentType':
 				# Look up the MIME type in the table
 				# This value may be a single byte
-				byte_range = bytes([byte_range]) if type(byte_range) is int else byte_range[0]
+				byte_range = bytes([byte_range]) if type(byte_range) is int else byte_range
 				if byte_range[0] in self.mime_types:
 					value = self.mms_content_type = self.mime_types[byte_range[0]]
 
