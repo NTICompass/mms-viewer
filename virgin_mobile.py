@@ -262,7 +262,7 @@ class MMSMessage:
 			# Read the next byte...
 			# 00-1E: Read that many bytes
 			# 1F: Next byte is length
-			# 20-7F: Null-terminated strng
+			# 20-7F: Null-terminated string
 			# 80-FF: This byte is the data
 			header_length = self.data[curr_index]
 
@@ -416,24 +416,40 @@ class MMSMessage:
 			curr_index += content_type_length
 
 			# Get the content type
-			# Read until we hit a null byte (0x00)
-			data_content_type_length = content_type_range.index(0x00)
-			data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
-			# self.content_type should be application/smil
-			# The 1st part will be this, but the 2nd can be anything
+			# How should we intrepret this?
+			# Check the 1st byte:
+			# 20-7F: Null-terminated string
+			# 80-FF: This byte is the data
+			if 0x20 <= content_type_range[0] <= 0x7F:
+				# Read until we hit a null byte (0x00)
+				data_content_type_length = content_type_range.index(0x00)
 
-			# What charset is being used?
-			data_charset = self.charsets[content_type_range[data_content_type_length+1]]
+				# self.content_type should be application/smil
+				# The 1st part will be this, but the 2nd can be anything
+				data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
 
-			# Also included is the "start" point of the content type
-			data_content_start = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+				# What charset is being used?
+				data_charset = self.charsets[content_type_range[data_content_type_length+1]]
+
+				# Also included is the "start" point of the content type
+				data_content_extra = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+			elif 0x80 <= content_type_range[0] <= 0xFF:
+				# Look it up in the MIME type table
+				data_content_type = self.mime_types[content_type_range[0]]
+
+				# What charset is being used?
+				data_charset = self.charsets[content_type_range[2] if content_type_range[1] == 0x81 else content_type_range[1]]
+
+				# There is more data included after.  0x85 seems to be the "file name", again
+				data_content_extra = (content_type_range[3:] if content_type_range[1] == 0x81 else content_type_range[2:]).lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
 
 			# The next byte should be 0xC0
 			# Followed by the "Content-ID" (this may not match the one from earlier)
 			# This is just the rest of the remaining bytes before the data
 			# I don't actually know what it is or how to decode it
 			# It seems to contain the "file name", except multiple times for some reason
-			remaining_length = data_header_length-len(remaining_bits)-content_type_length+1
+			# We've read the "content-type length" (1 byte) and the "content-type"
+			remaining_length = data_header_length-1-content_type_length
 			data_content_id = self.data[curr_index:curr_index+remaining_length]
 			curr_index += remaining_length
 
@@ -456,9 +472,6 @@ class MMSMessage:
 				'data': the_data
 			})
 
-			print(mms_data)
-			sys.exit(0)
-
 		return mms_headers, mms_data
 
 if __name__ == '__main__':
@@ -476,4 +489,4 @@ if __name__ == '__main__':
 		decoder = MMSMessage(mms_data)
 		mms_headers, mms_data = decoder.decode()
 
-		print(decoder.content_type, mms_data)
+		print(mms_data)

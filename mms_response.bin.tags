@@ -153,7 +153,7 @@
       <end_offset>366</end_offset>
       <tag_text>Number of Contents</tag_text>
       <font_colour>#5B6469</font_colour>
-      <note_colour>#FFFF00</note_colour>
+      <note_colour>#00EDFF</note_colour>
     </TAG>
     <TAG id="22">
       <start_offset>367</start_offset>
@@ -198,6 +198,41 @@
       <note_colour>#FF5000</note_colour>
     </TAG>
     <TAG id="28">
+      <start_offset>761</start_offset>
+      <end_offset>761</end_offset>
+      <tag_text>Data Header Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="29">
+      <start_offset>762</start_offset>
+      <end_offset>762</end_offset>
+      <tag_text>Content-Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="30">
+      <start_offset>763</start_offset>
+      <end_offset>763</end_offset>
+      <tag_text>Data Content-Type Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="31">
+      <start_offset>779</start_offset>
+      <end_offset>764</end_offset>
+      <tag_text>Data Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="32">
+      <start_offset>780</start_offset>
+      <end_offset>824</end_offset>
+      <tag_text>Content-ID</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="33">
       <start_offset>825</start_offset>
       <end_offset>913</end_offset>
       <tag_text>TXT Data</tag_text>
