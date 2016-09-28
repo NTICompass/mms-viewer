@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wxHexEditor_XML_TAG>
-  <filename path="/home/nticompass/Code/mms-viewer/mms_image.bin">
+  <filename path="/home/nticompass/Code/mms-viewer/mms_image.bin.tags">
     <TAG id="0">
       <start_offset>0</start_offset>
       <end_offset>1</end_offset>
@@ -93,13 +93,90 @@
       <note_colour>#EC13AC</note_colour>
     </TAG>
     <TAG id="13">
+      <start_offset>179</start_offset>
+      <end_offset>179</end_offset>
+      <tag_text>Number of Contents</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#00EDFF</note_colour>
+    </TAG>
+    <TAG id="14">
+      <start_offset>180</start_offset>
+      <end_offset>180</end_offset>
+      <tag_text>Data Header Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="15">
+      <start_offset>181</start_offset>
+      <end_offset>182</end_offset>
+      <tag_text>Content-Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="16">
+      <start_offset>183</start_offset>
+      <end_offset>184</end_offset>
+      <tag_text>Data Content-Type Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="17">
+      <start_offset>185</start_offset>
+      <end_offset>225</end_offset>
+      <tag_text>Data Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="18">
+      <start_offset>226</start_offset>
+      <end_offset>257</end_offset>
+      <tag_text>Content-ID</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="19">
       <start_offset>258</start_offset>
       <end_offset>667</end_offset>
       <tag_text>SMIL+XML</tag_text>
       <font_colour>#5B6469</font_colour>
       <note_colour>#FF5000</note_colour>
     </TAG>
-    <TAG id="14">
+    <TAG id="20">
+      <start_offset>668</start_offset>
+      <end_offset>668</end_offset>
+      <tag_text>Data Header Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="21">
+      <start_offset>669</start_offset>
+      <end_offset>671</end_offset>
+      <tag_text>Content-Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="22">
+      <start_offset>672</start_offset>
+      <end_offset>672</end_offset>
+      <tag_text>Data Content-Type Length</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="23">
+      <start_offset>673</start_offset>
+      <end_offset>698</end_offset>
+      <tag_text>Data Content-Type</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="24">
+      <start_offset>699</start_offset>
+      <end_offset>751</end_offset>
+      <tag_text>Content-ID</tag_text>
+      <font_colour>#5B6469</font_colour>
+      <note_colour>#FFFF00</note_colour>
+    </TAG>
+    <TAG id="25">
       <start_offset>752</start_offset>
       <end_offset>243941</end_offset>
       <tag_text>JPEG Data</tag_text>
