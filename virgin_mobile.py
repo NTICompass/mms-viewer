@@ -10,7 +10,7 @@ from bs4 import BeautifulSoup
 from PIL import Image # Pillow
 from io import BytesIO
 
-version = "0.1 alpha"
+version = "0.2 alpha"
 
 class VirginMobile:
 	"""
