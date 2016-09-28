@@ -58,16 +58,7 @@ class VirginMobile:
 		return urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
 
 # Parse the MMS PDU into an object
-# Some info at http://support.nowsms.com/discus/messages/485/13726.html
-# More into at http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_2-20050429-A/OMA-MMS-ENC-V1_2-20050301-A.pdf
-# Or at: http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_3-20080128-C/OMA-TS-MMS-ENC-V1_3-20080128-C.pdf
-# TODO: Totally don't steal code from http://python-mms.sourceforge.net/api/mms.mms_pdu-pysrc.html
-# TODO: More code I shouldn't steal from: https://github.com/heyman/mms-decoder/blob/master/mmsdecoder.php
 class MMSMessage:
-	# From: https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
-	# See also: https://www.wireshark.org/docs/dfref/m/mmse.html
-	# Decoding example: http://support.nowsms.com/discus/messages/485/6597538470-D8751867A0B-13774.txt
-	# MMS Content Type info: http://www.nowsms.com/send-an-mms-to-a-java-appmidlet
 	# Each header value has its own unique way of being decoded
 	# tuple: (name, method)
 	# See: http://www.wapforum.org/tech/documents/WAP-230-WSP-20010705-a.pdf (see section 8.4.1.2)
