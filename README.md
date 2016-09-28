@@ -6,7 +6,6 @@ Such as the MMS spec:
  - v1.3: http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_3-20080128-C/OMA-TS-MMS-ENC-V1_3-20080128-C.pdf
 
 - v1.2: http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_2-20050429-A/OMA-MMS-ENC-V1_2-20050301-A.pdf
-http://support.nowsms.com/discus/messages/485/13726.html
 
 And WAP-230: http://www.wapforum.org/tech/documents/WAP-230-WSP-20010705-a.pdf
 
