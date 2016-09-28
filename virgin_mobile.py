@@ -1,11 +1,14 @@
+#!/usr/bin/env python3
 """
 	Virgin Mobile MMS Downloader
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import sys, urllib.request, binascii
+import sys, argparse, urllib.request, binascii
 from datetime import datetime
 from bs4 import BeautifulSoup
+
+version = "0.1 alpha"
 
 class VirginMobile:
 	"""
@@ -484,10 +487,24 @@ class MMSMessage:
 		return mms_headers, mms_data
 
 if __name__ == '__main__':
-	phone = VirginMobile('15555555555')
+	parser = argparse.ArgumentParser(
+		description="MMS Viewer v{0}: An MMS Downloader and Decoder".format(version),
+		epilog="https://github.com/NTICompass/mms-viewer"
+	)
+
+	parser.add_argument('-V', '--version', action='version', version=version)
+
+	parser.add_argument("file_or_phone", help="MMS File or phone number")
+	parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
+
+	args = parser.parse_args()
+
 	try:
-		#message = phone.download('mms-id', proxy=False)
-		message = open('mms_image.bin', 'rb')
+		if args.mmsid is not None:
+			phone = VirginMobile(args.file_or_phone)
+			message = phone.download(args.mmsid, proxy=False)
+		else:
+			message = open(args.file_or_phone, 'rb')
 	except urllib.error.URLError as error:
 		print(error.reason)
 	else:
@@ -497,6 +514,8 @@ if __name__ == '__main__':
 		# Decode the message
 		decoder = MMSMessage(mms_data)
 		mms_headers, mms_data = decoder.decode()
+
+		message.close()
 
 		print(mms_headers)
 		print(mms_data)
