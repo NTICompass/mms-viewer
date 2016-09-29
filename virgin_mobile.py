@@ -73,7 +73,7 @@ class VirginMobile:
 			else:
 				print('MMS Downloaded {0} bytes from {1}'.format(mms_download.getheader('Content-Length'), server))
 				# The "message not found" packets seem to be 60 bytes
-				# TODO: DOn't hard-code this "magic number"
+				# TODO: Don't hard-code this "magic number"
 				if int(mms_download.getheader('Content-Length')) > 60:
 					mms_data_stream = mms_download
 					break
