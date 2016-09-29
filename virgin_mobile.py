@@ -55,9 +55,31 @@ class VirginMobile:
 		opener.addheaders = [('X-MDN', self.phone_num)]
 		urllib.request.install_opener(opener)
 
-		# TODO: Loop over servers until one works
-		server, query = self.mms_servers[1]
-		return urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
+		# There are multiple different servers that can be used to download the MMS
+		# I'd say that images use rstnmmsc and text uses sobmmsc,
+		# but this isn't actually always the case
+		# If the server is incorrect, or the message has expired (or doesn't exist),
+		# we will still get a binary file that we need to decode to get the error.
+		# mmsc actually will throw a 404, the other 2 will not.
+		mms_data_stream = None
+
+		for srv in self.mms_servers:
+			server, query = srv
+
+			try:
+				mms_download = urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
+			except urllib.error.URLError as error:
+				print('MMS Download ({0}) Failed: {1} {2}'.format(server, error.code, error.reason))
+			else:
+				print('MMS Downloaded {0} bytes from {1}'.format(mms_download.getheader('Content-Length'), server))
+				# The "message not found" packets seem to be 60 bytes
+				# TODO: DOn't hard-code this "magic number"
+				if int(mms_download.getheader('Content-Length')) > 60:
+					mms_data_stream = mms_download
+					break
+
+		return mms_data_stream
+
 
 # Parse the MMS PDU into an object
 class MMSMessage:
@@ -537,49 +559,46 @@ if __name__ == '__main__':
 
 	args = parser.parse_args()
 
-	try:
-		if args.mmsid is not None:
-			phone = VirginMobile(args.file_or_phone)
-			message = phone.download(args.mmsid, proxy=False)
-		else:
-			message = open(args.file_or_phone, 'rb')
-	except urllib.error.URLError as error:
-		print('MMS Download Failed:', error.reason)
+	if args.mmsid is not None:
+		phone = VirginMobile(args.file_or_phone)
+		message = phone.download(args.mmsid, proxy=False)
 	else:
-		# Get the data from the resource
-		mms_data = message.read()
+		message = open(args.file_or_phone, 'rb')
 
-		# Decode the message
-		decoder = MMSMessage(mms_data)
-		mms_headers, mms_data = decoder.decode()
+	# Get the data from the resource
+	mms_data = message.read()
 
-		# Close the file/urllib.request object
-		message.close()
+	# Decode the message
+	decoder = MMSMessage(mms_data)
+	mms_headers, mms_data = decoder.decode()
 
-		if args.debug:
-			print(mms_headers)
-			print(mms_data)
+	# Close the file/urllib.request object
+	message.close()
 
-		# Did we get a successful message or an error?
-		if mms_headers['Content-Type'] == 'text/plain':
-			# MMS message contains an error message
-			print('MMS Error:', mms_data[0]['data'])
-		elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
-			# Print out some of the more important headers
-			print("From:\n\t", mms_headers['From'])
-			print("To:\n\t", mms_headers['To'])
-			print("Date:\n\t", mms_headers['Date'].strftime('%c'))
-			print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
+	if args.debug:
+		print(mms_headers)
+		print(mms_data)
 
-			# Loop over the data and decide what to do with it
-			for file_data in mms_data:
-				# We have an image.  Should we extract it?
-				if file_data['contentType'].startswith('image/') and args.extract:
-					# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
-					if file_data['contentType'] == ' image/jpeg':
-						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
-					else:
-						file_data['data'].save(file_data['fileName'])
-				# This is just a text, display it
-				elif file_data['contentType'] == 'text/plain':
-					print("Text:\n\t", file_data['data'])
+	# Did we get a successful message or an error?
+	if mms_headers['Content-Type'] == 'text/plain':
+		# MMS message contains an error message
+		print('MMS Error:', mms_data[0]['data'])
+	elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
+		# Print out some of the more important headers
+		print("From:\n\t", mms_headers['From'])
+		print("To:\n\t", mms_headers['To'])
+		print("Date:\n\t", mms_headers['Date'].strftime('%c'))
+		print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
+
+		# Loop over the data and decide what to do with it
+		for file_data in mms_data:
+			# We have an image.  Should we extract it?
+			if file_data['contentType'].startswith('image/') and args.extract:
+				# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
+				if file_data['contentType'] == ' image/jpeg':
+					file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
+				else:
+					file_data['data'].save(file_data['fileName'])
+			# This is just a text, display it
+			elif file_data['contentType'] == 'text/plain':
+				print("Text:\n\t", file_data['data'])
