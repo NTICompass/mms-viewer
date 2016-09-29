@@ -603,6 +603,7 @@ if __name__ == '__main__':
 					file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
 				else:
 					file_data['data'].save(file_data['fileName'])
+				print("Image Saved As:\n\t", file_data['fileName'])
 			# This is just a text, display it
 			elif file_data['contentType'] == 'text/plain':
 				print("Text:\n\t", file_data['data'])
