@@ -77,6 +77,8 @@ class VirginMobile:
 				if int(mms_download.getheader('Content-Length')) > 60:
 					mms_data_stream = mms_download
 					break
+				else:
+					mms_download.close()
 
 		return mms_data_stream
 
@@ -588,6 +590,8 @@ if __name__ == '__main__':
 		print("From:\n\t", mms_headers['From'])
 		print("To:\n\t", mms_headers['To'])
 		print("Date:\n\t", mms_headers['Date'].strftime('%c'))
+		if 'Subject' in mms_headers:
+			print("Subject:\n\t", mms_headers['Subject'])
 		print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
 
 		# Loop over the data and decide what to do with it
