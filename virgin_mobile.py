@@ -423,22 +423,14 @@ class MMSMessage:
 				# Then you glue them back together
 				# Ex: 82 3F => 1000 0010 0011 1111
 				# 1|0000010 0|0111111 => 00 0001 0011 1111 => 0x013F => 319
-				cont_bit = True
-				remaining_bits = []
-
-				while cont_bit:
-					variable_length = self.data[curr_index]
+				# With help from: http://codereview.stackexchange.com/a/142939/52
+				content_length = 0
+				while True:
+					byte = self.data[curr_index]
 					curr_index += 1
-
-					# There's obviously a better way to do this, but I don't really know what it is
-					binary_length = bin(variable_length).lstrip('0b').zfill(8)
-
-					# Check the "continue bit"
-					cont_bit = (binary_length[0] == '1')
-					remaining_bits.append(binary_length[1:])
-
-				# Put the values together and read it as an int
-				content_length = int(''.join(remaining_bits), 2)
+					content_length = (content_length << 7) | (byte & 127)
+					if byte >> 7 == 0:
+						break
 
 				# Get the full "data header", which contains the
 				# Content-Type and Content-ID
