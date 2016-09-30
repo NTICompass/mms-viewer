@@ -4,7 +4,7 @@
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import sys, argparse, urllib.request, binascii
+import sys, argparse, urllib.request, struct
 from datetime import datetime
 from bs4 import BeautifulSoup
 from PIL import Image # Pillow
@@ -370,11 +370,10 @@ class MMSMessage:
 				value = byte_range.decode('utf_8')
 			elif method == 'timestamp':
 				# Decode the bytes into an timestamp
-				# TODO: There's got to be a better way to convert a
-				# bytearray/bytes object into an int
 				# ie: convert b'\x57\xe2\xa2\x49' to 0x57e2a249 (1474470473)
-				#timestamp = int(''.join(map(hex, byte_range)).replace('0x', ''), 16)
-				timestamp = int(binascii.hexlify(byte_range), 16)
+				# With thanks to: http://codereview.stackexchange.com/a/142918/52
+				# Note: Unpack always returns a tuple (even if it only contains one value)
+				timestamp, = struct.unpack('>L', byte_range)
 				value = datetime.fromtimestamp(timestamp)
 			elif method == 'boolean':
 				# A "boolean" is a yes/no value
