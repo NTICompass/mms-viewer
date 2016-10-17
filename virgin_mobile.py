@@ -14,20 +14,25 @@ version = "0.3 alpha"
 
 class VirginMobile:
 	"""
-	Virgin Mobile normally uses mmsc as its endpoint,
-	but sometimes it needs rstnmmsc or sobmmsc.
+	Virgin Mobile uses multiple endpoints for different MMS messages.
 
-	This is an array of tuples.  1st is the server, 2nd is the query parameter
+	mmsc.vmobl.com:8088/mms/?XXX *should* work, but usually 404's
+	rstnmmsc.vmobl.com seems to be used when the ID is 17 characters
+	sobmmsc.vmobl.com seems to be used when it's 9 characters
+
+	This is an object of tuples.  1st is the server, 2nd is the query parameter
+	The key is the string length of the ID
 	"""
-	mms_servers = [
-		('mmsc.vmobl.com', 'mms'),
-		('rstnmmsc.vmobl.com', 'ammsc'),
-		('sobmmsc.vmobl.com', 'ammsc')
-	]
+	mms_servers = {
+		17: ('rstnmmsc.vmobl.com', 'ammsc'),
+		9: ('sobmmsc.vmobl.com', 'ammsc')
+	}
 	mms_port = '8088' # This is the default port for all servers
 
 	"""
 	If needed, we can send our request through a proxy
+
+	For some reason, these seem to timeout when used
 	"""
 	mms_proxy = [
 		('205.239.233.136', '81'),
@@ -55,30 +60,16 @@ class VirginMobile:
 		opener.addheaders = [('X-MDN', self.phone_num)]
 		urllib.request.install_opener(opener)
 
-		# There are multiple different servers that can be used to download the MMS
-		# I'd say that images use rstnmmsc and text uses sobmmsc,
-		# but this isn't actually always the case
-		# If the server is incorrect, or the message has expired (or doesn't exist),
-		# we will still get a binary file that we need to decode to get the error.
-		# mmsc actually will throw a 404, the other 2 will not.
-		mms_data_stream = None
-
-		for srv in self.mms_servers:
-			server, query = srv
-
-			try:
-				mms_download = urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
-			except urllib.error.URLError as error:
-				print('MMS Download ({0}) Failed: {1} {2}'.format(server, error.code, error.reason))
-			else:
-				print('MMS Downloaded {0} bytes from {1}'.format(mms_download.getheader('Content-Length'), server))
-				# The "message not found" packets seem to be 60 bytes
-				# TODO: Don't hard-code this "magic number"
-				if int(mms_download.getheader('Content-Length')) > 60:
-					mms_data_stream = mms_download
-					break
-				else:
-					mms_download.close()
+		# Which server do we use?  It seems to be based off of the length of the ID
+		server, query = self.mms_servers[len(mms_id)]
+		try:
+			mms_download = urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
+		except urllib.error.URLError as error:
+			print('MMS Download ({0}) Failed: {1} {2}'.format(server, error.code, error.reason))
+			mms_data_stream = None
+		else:
+			print('MMS Downloaded {0} bytes from {1}'.format(mms_download.getheader('Content-Length'), server))
+			mms_data_stream = mms_download
 
 		return mms_data_stream
 
@@ -558,43 +549,45 @@ if __name__ == '__main__':
 	else:
 		message = open(args.file_or_phone, 'rb')
 
-	# Get the data from the resource
-	mms_data = message.read()
+	# Check if the file was downloaded successfully
+	if message is not None:
+		# Get the data from the resource
+		mms_data = message.read()
 
-	# Decode the message
-	decoder = MMSMessage(mms_data)
-	mms_headers, mms_data = decoder.decode()
+		# Decode the message
+		decoder = MMSMessage(mms_data)
+		mms_headers, mms_data = decoder.decode()
 
-	# Close the file/urllib.request object
-	message.close()
+		# Close the file/urllib.request object
+		message.close()
 
-	if args.debug:
-		print(mms_headers)
-		print(mms_data)
+		if args.debug:
+			print(mms_headers)
+			print(mms_data)
 
-	# Did we get a successful message or an error?
-	if mms_headers['Content-Type'] == 'text/plain':
-		# MMS message contains an error message
-		print('MMS Error:', mms_data[0]['data'])
-	elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
-		# Print out some of the more important headers
-		print("From:\n\t", mms_headers['From'])
-		print("To:\n\t", mms_headers['To'])
-		print("Date:\n\t", mms_headers['Date'].strftime('%c'))
-		if 'Subject' in mms_headers:
-			print("Subject:\n\t", mms_headers['Subject'])
-		print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
+		# Did we get a successful message or an error?
+		if mms_headers['Content-Type'] == 'text/plain':
+			# MMS message contains an error message
+			print('MMS Error:', mms_data[0]['data'])
+		elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
+			# Print out some of the more important headers
+			print("From:\n\t", mms_headers['From'])
+			print("To:\n\t", mms_headers['To'])
+			print("Date:\n\t", mms_headers['Date'].strftime('%c'))
+			if 'Subject' in mms_headers:
+				print("Subject:\n\t", mms_headers['Subject'])
+			print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
 
-		# Loop over the data and decide what to do with it
-		for file_data in mms_data:
-			# We have an image.  Should we extract it?
-			if file_data['contentType'].startswith('image/') and args.extract:
-				# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
-				if file_data['contentType'] == ' image/jpeg':
-					file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
-				else:
-					file_data['data'].save(file_data['fileName'])
-				print("Image Saved As:\n\t", file_data['fileName'])
-			# This is just a text, display it
-			elif file_data['contentType'] == 'text/plain':
-				print("Text:\n\t", file_data['data'])
+			# Loop over the data and decide what to do with it
+			for file_data in mms_data:
+				# We have an image.  Should we extract it?
+				if file_data['contentType'].startswith('image/') and args.extract:
+					# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
+					if file_data['contentType'] == ' image/jpeg':
+						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
+					else:
+						file_data['data'].save(file_data['fileName'])
+					print("Image Saved As:\n\t", file_data['fileName'])
+				# This is just a text, display it
+				elif file_data['contentType'] == 'text/plain':
+					print("Text:\n\t", file_data['data'])
