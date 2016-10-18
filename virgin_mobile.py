@@ -451,8 +451,11 @@ class MMSMessage:
 				# A single byte will be read as an int, convert it back to a bytes object
 				content_type_range = bytes([content_type_range]) if type(content_type_range) is int else content_type_range
 
-				# Get the content type
-				# How should we intrepret this?
+				# Get the content type, charset and file name
+				# This may not always be set for all parts
+				file_name = ''
+
+				# How should we intrepret the content type?
 				# Check the 1st byte:
 				# 20-7F: Null-terminated string
 				# 80-FF: This byte is the data
@@ -464,45 +467,54 @@ class MMSMessage:
 					# The 1st part will be this, but the 2nd can be anything
 					data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
 
-					# What charset is being used?
+					# What charset is being used?  That's the next byte
 					data_charset = self.charsets[content_type_range[data_content_type_length+1]]
 
-					# Also included is the "start" point of the content type
-					data_content_extra = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+					# The rest is the file name, followed by a null byte
+					file_name = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
 				elif 0x80 <= content_type_range[0] <= 0xFF:
 					# Look it up in the MIME type table
 					data_content_type = self.mime_types[content_type_range[0]]
 
-					if len(content_type_range) >1:
-						# What charset is being used, if any?
-						data_charset = self.charsets[content_type_range[2] if content_type_range[1] == 0x81 else content_type_range[1]]
+					# Is there any more data here?  A charset and (maybe) a file name.
+					if len(content_type_range) > 1:
+						# We may need to get more info out of this range, let's add a counter
+						data_content_type_index = 1
 
-						# There is more data included after.  0x85 seems to be the "file name", again
-						data_content_extra = (content_type_range[3:] if content_type_range[1] == 0x81 else content_type_range[2:]).lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
+						# What charset is being used, if any?
+						# If there's an 0x85, this may mean "start of file name", and may not be the charset
+						# There may sometimes be an 0x81 byte, which means the *next* byte is the charset
+						if content_type_range[data_content_type_index] == 0x81:
+							data_charset = self.charsets[content_type_range[data_content_type_index+1]]
+							data_content_type_index += 2
+						else:
+							data_charset = self.charsets[content_type_range[data_content_type_index]]
+							data_content_type_index += 1
+
+						# Is there anything, like a file name, left?
+						if len(content_type_range) > data_content_type_index:
+							# The rest is the file name, followed by a null byte
+							# Sometimes there's an 0x85 here.  Not sure why.
+							# Pretty sure we already read the charset, and no longer need it.
+							# Just strip it off, I guess.
+							file_name = content_type_range[data_content_type_index:].lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
 
 				# Followed by the "Content-ID" (this may not match the one from earlier)
 				# This is just the rest of the remaining bytes before the data
 				# I don't actually know what it is or how to decode it
 				# It seems to contain the "file name", except multiple times for some reason
 				# We've read the "content-type length" (1 byte) and the "content-type"
+				# and the "file name", this is what's left in the data header
 				data_content_id = data_header[data_header_index:]
 
-				# If we have 0xC0, then we can decode the file name from there
-				if data_content_id.startswith(b'\xc0\x22'):
-					# Split this into multiple parts
-					# The 1st seems to be a consistent 0xC0 0x22
-					# With the file name inside `<>`
-					data_content_id = data_content_id.rstrip(b'\x00').split(b'\x00')
-					file_name = data_content_id[0].lstrip(b'\xc0\x22').decode('utf_8')[1:-1]
-				elif len(data_content_id) > 0:
-					# We have some other type of "Content-ID" data
-					# When I emailed myself an image, this contained the file name
-					# After an 0x86 byte (before that was 0xAE 0x0F 0X81)
-					file_name_index = data_content_id.find(b'\x86')
-					file_name = data_content_id[file_name_index+1:-1].decode('utf_8') if file_name_index >= 0 else ''
-				else:
-					# "Content-ID" is blank
-					file_name = ''
+				# The content type may not actually have the file name in it.
+				# In this case, it's in the content id.
+				# Let's attempt to extract it.
+				if file_name == '' and data_content_id.startswith(b'\xAE\x0F\x81\x86'):
+					# I don't know what these bytes mean, but the file name is after:
+					# 0xAE 0x0F 0x81 0x86
+					# and just read to NULL
+					file_name = data_content_id[4:].rstrip(b'\x00').decode('utf_8')
 
 				# Ok, we're done with the content headers.
 				# We know the length of the data, let's read that many bytes!
