@@ -3,7 +3,7 @@ import argparse
 from VirginMobile import VirginMobile
 from MMSMessage import MMSMessage
 
-version = "0.3 alpha"
+version = "0.4 alpha"
 
 parser = argparse.ArgumentParser(
 	description="MMS Viewer v{0}: An MMS Downloader and Decoder".format(version),
