@@ -4,7 +4,7 @@
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import sys, argparse, urllib.request, struct
+import sys, argparse, urllib.request, struct, tempfile, shutil
 from datetime import datetime
 from bs4 import BeautifulSoup
 from PIL import Image # Pillow
@@ -245,7 +245,7 @@ class MMSMessage:
 	def __init__(self, mms):
 		self.data = mms
 
-	def decode(self):
+	def decode(self, use_pil=True):
 		# Start looping over each byte in the data.
 		# Assume the 1st byte is a header code and then start decoding.
 		# Info on byte/bytearray: https://docs.python.org/3/library/stdtypes.html
@@ -523,7 +523,17 @@ class MMSMessage:
 
 				# "Decode" the data, or wrap it in an object
 				if data_content_type.startswith('image/'):
-					the_data = Image.open(BytesIO(the_data))
+					# Should we process the image with PIL or not?
+					if use_pil:
+						the_data = Image.open(BytesIO(the_data))
+					else:
+						# 5M of RAM before using a temp file on disk
+						tmpFile = tempfile.SpooledTemporaryFile(5242880)
+						tmpFile.write(the_data)
+						tmpFile.seek(0)
+
+						# Store the "file" object in as the data
+						the_data = tmpFile
 				elif data_content_type == 'application/smil':
 					the_data = BeautifulSoup(the_data.decode(data_charset), 'xml')
 				else:
@@ -551,7 +561,10 @@ if __name__ == '__main__':
 	parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
 
 	parser.add_argument('--debug', help="Print debugging info", action="store_true")
-	parser.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
+
+	group = parser.add_mutually_exclusive_group()
+	group.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
+	group.add_argument('-X', '--extract-original', help="Extract original image file(s) without using PIL", action="store_true")
 
 	args = parser.parse_args()
 
@@ -568,7 +581,7 @@ if __name__ == '__main__':
 
 		# Decode the message
 		decoder = MMSMessage(mms_data)
-		mms_headers, mms_data = decoder.decode()
+		mms_headers, mms_data = decoder.decode(use_pil=not args.extract_original)
 
 		# Close the file/urllib.request object
 		message.close()
@@ -593,12 +606,20 @@ if __name__ == '__main__':
 			# Loop over the data and decide what to do with it
 			for file_data in mms_data:
 				# We have an image.  Should we extract it?
-				if file_data['contentType'].startswith('image/') and args.extract:
-					# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
-					if file_data['contentType'] == ' image/jpeg':
-						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
-					else:
-						file_data['data'].save(file_data['fileName'])
+				if file_data['contentType'].startswith('image/'):
+					# The file could be stored as either a PIL object or a temp file
+					if args.extract:
+						# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
+						if file_data['contentType'] == ' image/jpeg':
+							file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
+						else:
+							file_data['data'].save(file_data['fileName'])
+					elif args.extract_original:
+						real_file = open(file_data['fileName'], 'wb')
+						shutil.copyfileobj(file_data['data'], real_file)
+						real_file.close()
+
+					file_data['data'].close()
 					print("Image Saved As:\n\t", file_data['fileName'])
 				# This is just a text, display it
 				elif file_data['contentType'] == 'text/plain':
