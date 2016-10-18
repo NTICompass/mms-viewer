@@ -1,2 +1,6 @@
+__pycache__
+*.pyc
+
 mms_*.bin
 *.jpg
+*.png

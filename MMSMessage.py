@@ -1,89 +1,14 @@
-#!/usr/bin/env python3
 """
-	Virgin Mobile MMS Downloader
+	MMS PDU Decoder
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import sys, argparse, urllib.request, struct
+import struct, tempfile, shutil
 from datetime import datetime
 from bs4 import BeautifulSoup
 from PIL import Image # Pillow
 from io import BytesIO
 
-version = "0.3 alpha"
-
-class VirginMobile:
-	"""
-	Virgin Mobile normally uses mmsc as its endpoint,
-	but sometimes it needs rstnmmsc or sobmmsc.
-
-	This is an array of tuples.  1st is the server, 2nd is the query parameter
-	"""
-	mms_servers = [
-		('mmsc.vmobl.com', 'mms'),
-		('rstnmmsc.vmobl.com', 'ammsc'),
-		('sobmmsc.vmobl.com', 'ammsc')
-	]
-	mms_port = '8088' # This is the default port for all servers
-
-	"""
-	If needed, we can send our request through a proxy
-	"""
-	mms_proxy = [
-		('205.239.233.136', '81'),
-		('68.28.31.7', '80')
-	]
-	mms_proxy_auth = ('Sprint', '*')
-
-	# Create a new object with your phone number to download MMS messages
-	def __init__(self, phone_num):
-		self.phone_num = phone_num
-
-	# Pass the MMS ID (I get it from Signal's logs) to download it from the server
-	def download(self, mms_id, proxy=True):
-		# Create the opener, it'll need to send the `X-MDN` header and may need to use a proxy
-		if proxy:
-			# TODO: Loop and try each proxy
-			proxy_auth = ':'.join(self.mms_proxy_auth)
-			proxy_server = ':'.join(self.mms_proxy[0])
-
-			proxy = urllib.request.ProxyHandler({'http': "http://{0}@{1}".format(proxy_auth, proxy_server)})
-			opener = urllib.request.build_opener(proxy)
-		else:
-			opener = urllib.request.build_opener()
-
-		opener.addheaders = [('X-MDN', self.phone_num)]
-		urllib.request.install_opener(opener)
-
-		# There are multiple different servers that can be used to download the MMS
-		# I'd say that images use rstnmmsc and text uses sobmmsc,
-		# but this isn't actually always the case
-		# If the server is incorrect, or the message has expired (or doesn't exist),
-		# we will still get a binary file that we need to decode to get the error.
-		# mmsc actually will throw a 404, the other 2 will not.
-		mms_data_stream = None
-
-		for srv in self.mms_servers:
-			server, query = srv
-
-			try:
-				mms_download = urllib.request.urlopen("http://{0}:{1}/{2}?{3}".format(server, self.mms_port, query, mms_id), timeout=10)
-			except urllib.error.URLError as error:
-				print('MMS Download ({0}) Failed: {1} {2}'.format(server, error.code, error.reason))
-			else:
-				print('MMS Downloaded {0} bytes from {1}'.format(mms_download.getheader('Content-Length'), server))
-				# The "message not found" packets seem to be 60 bytes
-				# TODO: Don't hard-code this "magic number"
-				if int(mms_download.getheader('Content-Length')) > 60:
-					mms_data_stream = mms_download
-					break
-				else:
-					mms_download.close()
-
-		return mms_data_stream
-
-
-# Parse the MMS PDU into an object
 class MMSMessage:
 	# Each header value has its own unique way of being decoded
 	# tuple: (name, method)
@@ -254,7 +179,7 @@ class MMSMessage:
 	def __init__(self, mms):
 		self.data = mms
 
-	def decode(self):
+	def decode(self, use_pil=True):
 		# Start looping over each byte in the data.
 		# Assume the 1st byte is a header code and then start decoding.
 		# Info on byte/bytearray: https://docs.python.org/3/library/stdtypes.html
@@ -460,8 +385,11 @@ class MMSMessage:
 				# A single byte will be read as an int, convert it back to a bytes object
 				content_type_range = bytes([content_type_range]) if type(content_type_range) is int else content_type_range
 
-				# Get the content type
-				# How should we intrepret this?
+				# Get the content type, charset and file name
+				# This may not always be set for all parts
+				file_name = ''
+
+				# How should we intrepret the content type?
 				# Check the 1st byte:
 				# 20-7F: Null-terminated string
 				# 80-FF: This byte is the data
@@ -473,45 +401,54 @@ class MMSMessage:
 					# The 1st part will be this, but the 2nd can be anything
 					data_content_type = content_type_range[0:data_content_type_length].decode('utf_8')
 
-					# What charset is being used?
+					# What charset is being used?  That's the next byte
 					data_charset = self.charsets[content_type_range[data_content_type_length+1]]
 
-					# Also included is the "start" point of the content type
-					data_content_extra = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
+					# The rest is the file name, followed by a null byte
+					file_name = content_type_range[data_content_type_length+2:].rstrip(b'\x00').decode('utf_8')
 				elif 0x80 <= content_type_range[0] <= 0xFF:
 					# Look it up in the MIME type table
 					data_content_type = self.mime_types[content_type_range[0]]
 
-					if len(content_type_range) >1:
-						# What charset is being used, if any?
-						data_charset = self.charsets[content_type_range[2] if content_type_range[1] == 0x81 else content_type_range[1]]
+					# Is there any more data here?  A charset and (maybe) a file name.
+					if len(content_type_range) > 1:
+						# We may need to get more info out of this range, let's add a counter
+						data_content_type_index = 1
 
-						# There is more data included after.  0x85 seems to be the "file name", again
-						data_content_extra = (content_type_range[3:] if content_type_range[1] == 0x81 else content_type_range[2:]).lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
+						# What charset is being used, if any?
+						# If there's an 0x85, this may mean "start of file name", and may not be the charset
+						# There may sometimes be an 0x81 byte, which means the *next* byte is the charset
+						if content_type_range[data_content_type_index] == 0x81:
+							data_charset = self.charsets[content_type_range[data_content_type_index+1]]
+							data_content_type_index += 2
+						else:
+							data_charset = self.charsets[content_type_range[data_content_type_index]]
+							data_content_type_index += 1
+
+						# Is there anything, like a file name, left?
+						if len(content_type_range) > data_content_type_index:
+							# The rest is the file name, followed by a null byte
+							# Sometimes there's an 0x85 here.  Not sure why.
+							# Pretty sure we already read the charset, and no longer need it.
+							# Just strip it off, I guess.
+							file_name = content_type_range[data_content_type_index:].lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
 
 				# Followed by the "Content-ID" (this may not match the one from earlier)
 				# This is just the rest of the remaining bytes before the data
 				# I don't actually know what it is or how to decode it
 				# It seems to contain the "file name", except multiple times for some reason
 				# We've read the "content-type length" (1 byte) and the "content-type"
+				# and the "file name", this is what's left in the data header
 				data_content_id = data_header[data_header_index:]
 
-				# If we have 0xC0, then we can decode the file name from there
-				if data_content_id.startswith(b'\xc0\x22'):
-					# Split this into multiple parts
-					# The 1st seems to be a consistent 0xC0 0x22
-					# With the file name inside `<>`
-					data_content_id = data_content_id.rstrip(b'\x00').split(b'\x00')
-					file_name = data_content_id[0].lstrip(b'\xc0\x22').decode('utf_8')[1:-1]
-				elif len(data_content_id) > 0:
-					# We have some other type of "Content-ID" data
-					# When I emailed myself an image, this contained the file name
-					# After an 0x86 byte (before that was 0xAE 0x0F 0X81)
-					file_name_index = data_content_id.find(b'\x86')
-					file_name = data_content_id[file_name_index+1:-1].decode('utf_8') if file_name_index >= 0 else ''
-				else:
-					# "Content-ID" is blank
-					file_name = ''
+				# The content type may not actually have the file name in it.
+				# In this case, it's in the content id.
+				# Let's attempt to extract it.
+				if file_name == '' and data_content_id.startswith(b'\xAE\x0F\x81\x86'):
+					# I don't know what these bytes mean, but the file name is after:
+					# 0xAE 0x0F 0x81 0x86
+					# and just read to NULL
+					file_name = data_content_id[4:].rstrip(b'\x00').decode('utf_8')
 
 				# Ok, we're done with the content headers.
 				# We know the length of the data, let's read that many bytes!
@@ -520,7 +457,17 @@ class MMSMessage:
 
 				# "Decode" the data, or wrap it in an object
 				if data_content_type.startswith('image/'):
-					the_data = Image.open(BytesIO(the_data))
+					# Should we process the image with PIL or not?
+					if use_pil:
+						the_data = Image.open(BytesIO(the_data))
+					else:
+						# 5M of RAM before using a temp file on disk
+						tmpFile = tempfile.SpooledTemporaryFile(5242880)
+						tmpFile.write(the_data)
+						tmpFile.seek(0)
+
+						# Store the "file" object in as the data
+						the_data = tmpFile
 				elif data_content_type == 'application/smil':
 					the_data = BeautifulSoup(the_data.decode(data_charset), 'xml')
 				else:
@@ -535,66 +482,3 @@ class MMSMessage:
 				})
 
 		return mms_headers, mms_data
-
-if __name__ == '__main__':
-	parser = argparse.ArgumentParser(
-		description="MMS Viewer v{0}: An MMS Downloader and Decoder".format(version),
-		epilog="https://github.com/NTICompass/mms-viewer"
-	)
-
-	parser.add_argument('-V', '--version', action='version', version=version)
-
-	parser.add_argument("file_or_phone", help="MMS File or phone number")
-	parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
-
-	parser.add_argument('--debug', help="Print debugging info", action="store_true")
-	parser.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
-
-	args = parser.parse_args()
-
-	if args.mmsid is not None:
-		phone = VirginMobile(args.file_or_phone)
-		message = phone.download(args.mmsid, proxy=False)
-	else:
-		message = open(args.file_or_phone, 'rb')
-
-	# Get the data from the resource
-	mms_data = message.read()
-
-	# Decode the message
-	decoder = MMSMessage(mms_data)
-	mms_headers, mms_data = decoder.decode()
-
-	# Close the file/urllib.request object
-	message.close()
-
-	if args.debug:
-		print(mms_headers)
-		print(mms_data)
-
-	# Did we get a successful message or an error?
-	if mms_headers['Content-Type'] == 'text/plain':
-		# MMS message contains an error message
-		print('MMS Error:', mms_data[0]['data'])
-	elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
-		# Print out some of the more important headers
-		print("From:\n\t", mms_headers['From'])
-		print("To:\n\t", mms_headers['To'])
-		print("Date:\n\t", mms_headers['Date'].strftime('%c'))
-		if 'Subject' in mms_headers:
-			print("Subject:\n\t", mms_headers['Subject'])
-		print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])
-
-		# Loop over the data and decide what to do with it
-		for file_data in mms_data:
-			# We have an image.  Should we extract it?
-			if file_data['contentType'].startswith('image/') and args.extract:
-				# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
-				if file_data['contentType'] == ' image/jpeg':
-					file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
-				else:
-					file_data['data'].save(file_data['fileName'])
-				print("Image Saved As:\n\t", file_data['fileName'])
-			# This is just a text, display it
-			elif file_data['contentType'] == 'text/plain':
-				print("Text:\n\t", file_data['data'])
