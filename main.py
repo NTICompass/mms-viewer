@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse
+import argparse, os.path
 import tkinter as tk
 from PIL import Image, ImageTk
 
@@ -59,7 +59,7 @@ if message is not None:
 		# Print out some of the more important headers
 
 		# Look up names in our phonebook
-		if(args.phonebook):
+		if(args.phonebook and os.path.isfile('phonebook.db')):
 			phonebook = PhoneBook()
 
 			from_name = phonebook.get_name(mms_headers['From'])
