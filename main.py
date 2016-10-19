@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+import tkinter as tk
+from PIL import ImageTk
+
 from VirginMobile import VirginMobile
 from MMSMessage import MMSMessage
 
@@ -18,6 +21,7 @@ parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
 parser.add_argument('--debug', help="Print debugging info", action="store_true")
 
 group = parser.add_mutually_exclusive_group()
+group.add_argument('-d', '--display', help="Display image file(s)", action="store_true")
 group.add_argument('-x', '--extract', help="Extract image file(s)", action="store_true")
 group.add_argument('-X', '--extract-original', help="Extract original image file(s) without using PIL", action="store_true")
 
@@ -62,11 +66,26 @@ if message is not None:
 		for file_data in mms_data:
 			# We have an image.  Should we extract it?
 			if file_data['contentType'].startswith('image/'):
+				# Display the image in a GUI window
+				# Totally not stolen from http://stackoverflow.com/a/3167114
+				if args.display:
+					window = tk.Tk()
+					window.title('MMS Image')
+
+					mms_image = ImageTk.PhotoImage(file_data['data'])
+					window.geometry('{0}x{1}+{2}+{2}'.format(mms_image.width(), mms_image.height(), 0, 0))
+
+					panel = tk.Label(window, image=mms_image)
+					panel.pack(side='top', fill='both', expand='yes')
+
+					print("Diaplaying Image:\n\t", file_data['fileName'])
+					window.mainloop()
+
 				# The file could be stored as either a PIL object or a temp file
 				if args.extract:
 					# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
 					if file_data['contentType'] == ' image/jpeg':
-						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
+						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info['exif'])
 					else:
 						file_data['data'].save(file_data['fileName'])
 				elif args.extract_original:
@@ -75,7 +94,9 @@ if message is not None:
 					real_file.close()
 
 				file_data['data'].close()
-				print("Image Saved As:\n\t", file_data['fileName'])
+
+				if args.extract or args.extract_original:
+					print("Image Saved As:\n\t", file_data['fileName'])
 			# This is just a text, display it
 			elif file_data['contentType'] == 'text/plain':
 				print("Text:\n\t", file_data['data'])
