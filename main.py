@@ -76,23 +76,17 @@ if message is not None:
 					# Let's not make the window *too* big, how about a max of 1.5x the screen height
 					half_height = window.winfo_screenheight() / 1.5
 					if file_data['data'].height > half_height:
-						# Make a copy of the image, so we can resize it
-						image_copy = file_data['data'].copy()
-						image_copy.thumbnail((file_data['data'].width, half_height), Image.ANTIALIAS)
-
-						mms_image = ImageTk.PhotoImage(image_copy)
+						# Scale down the image
+						file_data['data'].thumbnail((file_data['data'].width, half_height), Image.ANTIALIAS)
 						print("Displaying Image (Scaled):\n\t", file_data['fileName'])
-
-						image_copy.close()
 					else:
-						mms_image = ImageTk.PhotoImage(file_data['data'])
 						print("Displaying Image:\n\t", file_data['fileName'])
 
-					window.geometry('{0}x{1}+{2}+{2}'.format(mms_image.width(), mms_image.height(), 0, 0))
-
+					mms_image = ImageTk.PhotoImage(file_data['data'])
 					panel = tk.Label(window, image=mms_image)
 					panel.pack(side='top', fill='both', expand='yes')
 
+					window.geometry('{0}x{1}+{2}+{2}'.format(mms_image.width(), mms_image.height(), 0, 0))
 					window.mainloop()
 
 				# The file could be stored as either a PIL object or a temp file
