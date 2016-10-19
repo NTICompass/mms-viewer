@@ -3,7 +3,7 @@
 	By: Eric Siegel
 	https://github.com/NTICompass/mms-viewer
 """
-import struct, tempfile, shutil
+import struct, tempfile
 from datetime import datetime
 from bs4 import BeautifulSoup
 from PIL import Image # Pillow
