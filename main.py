@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import tkinter as tk
-from PIL import ImageTk
+from PIL import Image, ImageTk
 
 from VirginMobile import VirginMobile
 from MMSMessage import MMSMessage
@@ -71,14 +71,28 @@ if message is not None:
 				if args.display:
 					window = tk.Tk()
 					window.title('MMS Image')
+					window.resizable(0, 0)
 
-					mms_image = ImageTk.PhotoImage(file_data['data'])
+					# Let's not make the window *too* big, how about a max of 1.5x the screen height
+					half_height = window.winfo_screenheight() / 1.5
+					if file_data['data'].height > half_height:
+						# Make a copy of the image, so we can resize it
+						image_copy = file_data['data'].copy()
+						image_copy.thumbnail((file_data['data'].width, half_height), Image.ANTIALIAS)
+
+						mms_image = ImageTk.PhotoImage(image_copy)
+						print("Displaying Image (Scaled):\n\t", file_data['fileName'])
+
+						image_copy.close()
+					else:
+						mms_image = ImageTk.PhotoImage(file_data['data'])
+						print("Displaying Image:\n\t", file_data['fileName'])
+
 					window.geometry('{0}x{1}+{2}+{2}'.format(mms_image.width(), mms_image.height(), 0, 0))
 
 					panel = tk.Label(window, image=mms_image)
 					panel.pack(side='top', fill='both', expand='yes')
 
-					print("Diaplaying Image:\n\t", file_data['fileName'])
 					window.mainloop()
 
 				# The file could be stored as either a PIL object or a temp file
