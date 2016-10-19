@@ -2,6 +2,7 @@
 import argparse
 from VirginMobile import VirginMobile
 from MMSMessage import MMSMessage
+from PhoneBook import PhoneBook
 
 version = "0.4 alpha"
 
@@ -14,6 +15,7 @@ parser.add_argument('-V', '--version', action='version', version=version)
 
 parser.add_argument("file_or_phone", help="MMS File or phone number")
 parser.add_argument("mmsid", nargs="?", help="MMS-Transaction-ID")
+parser.add_argument('-p', '--phonebook', help="Use phonebook.db", action="store_true")
 
 parser.add_argument('--debug', help="Print debugging info", action="store_true")
 
@@ -51,9 +53,22 @@ if message is not None:
 		print('MMS Error:', mms_data[0]['data'])
 	elif mms_headers['Content-Type'].startswith('application/vnd.wap.multipart'):
 		# Print out some of the more important headers
-		print("From:\n\t", mms_headers['From'])
-		print("To:\n\t", mms_headers['To'])
-		print("Date:\n\t", mms_headers['Date'].strftime('%c'))
+
+		# Look up names in our phonebook
+		if(args.phonebook):
+			phonebook = PhoneBook()
+
+			from_name = phonebook.get_name(mms_headers['From'])
+			print("From:\n\t", ' '.join(from_name) if from_name is not None else mms_headers['From'])
+
+			to_names = phonebook.get_names(mms_headers['To'])
+			to_names = [' '.join(to_names[to]).rstrip(' ') if to in to_names else to for to in mms_headers['To']]
+			print("To:\n\t", to_names)
+		else:
+			print("From:\n\t", mms_headers['From'])
+			print("To:\n\t", mms_headers['To'])
+
+		print("Date:\n\t", mms_headers['Date'].strftime('%A, %B %-d, %Y, %-I:%M %p'))
 		if 'Subject' in mms_headers:
 			print("Subject:\n\t", mms_headers['Subject'])
 		print("Message:\n\t", [(file_data['contentType'], file_data['contentLength']) for file_data in mms_data])

@@ -4,3 +4,5 @@ __pycache__
 mms_*.bin
 *.jpg
 *.png
+
+*.db

@@ -279,17 +279,18 @@ class MMSMessage:
 					value = ''
 			elif method == 'from':
 				# The "from" phone number
+				# Phone numbers end in "/TYPE=PLMN", let's strip that off
 				# The 1st byte is the "Address-present-token" (0x80)
 				# The last byte is a null byte (trim that off)
 				if byte_range.startswith(b'\x80'):
-					value = byte_range.lstrip(b'\x80').rstrip(b'\x00').decode('utf_8')
+					value = byte_range.lstrip(b'\x80').rstrip(b'\x00').decode('utf_8').rstrip('/TYPE=PLMN')
 				else:
 					value = ''
 			elif method == 'to':
 				# This will be an array, just in case there are multiple values
 				value = mms_headers[header] if header in mms_headers else []
 				# Note: value is a *reference*, so we can just update and not set it
-				value.append(byte_range.decode('utf_8'))
+				value.append(byte_range.decode('utf_8').rstrip('/TYPE=PLMN'))
 			elif method == 'ascii':
 				# Convert the byte_range into an ASCII string
 				value = byte_range.decode('utf_8')

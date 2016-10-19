@@ -1,6 +1,17 @@
 # mms-viewer
 A crappy python script to download/parse MMS messages.
 
+Can use a phonebook database.  To do so, create an sqlite database named `phonebook.db`.
+
+Schema:
+```
+CREATE TABLE phone_numbers(
+    phone_num char(11) primary key not null,
+    first_name text not null,
+    last_name text not null
+);
+```
+
 I used a lot of references to create the MMS decoder.
 Such as the MMS spec:
 - v1.3: http://technical.openmobilealliance.org/Technical/release_program/docs/MMS/V1_3-20080128-C/OMA-TS-MMS-ENC-V1_3-20080128-C.pdf
