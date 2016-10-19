@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, os.path
+import argparse, shutil, os.path
 import tkinter as tk
 from PIL import Image, ImageTk
 
