@@ -14,14 +14,9 @@ class PhoneBook:
 
     def get_names(self, numbers):
         sql = self.db_conn.cursor()
-        all_numbers = {}
-
+        
         values = ','.join(['?'] * len(numbers))
         result = sql.execute('SELECT phone_num, first_name, last_name FROM phone_numbers WHERE phone_num IN ({0})'.format(values), numbers)
 
-        # Convert this to an object ob tuples
-        for row in result:
-            phone_num, first_name, last_name = row
-            all_numbers[phone_num] = (first_name, last_name)
-
-        return all_numbers
+        # Convert this to an object of tuples
+        return {row[0]:(row[1],row[2]) for row in result}
