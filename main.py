@@ -107,8 +107,8 @@ if message is not None:
 				# The file could be stored as either a PIL object or a temp file
 				if args.extract:
 					# Only JPEGs can have EXIFs (most cell phones will add this when texting an image)
-					if file_data['contentType'] == ' image/jpeg':
-						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info['exif'])
+					if file_data['contentType'] == 'image/jpeg':
+						file_data['data'].save(file_data['fileName'], 'jpeg', exif=file_data['data'].info["exif"])
 					else:
 						file_data['data'].save(file_data['fileName'])
 				elif args.extract_original:
