@@ -419,6 +419,7 @@ class MMSMessage:
 						# What charset is being used, if any?
 						# If there's an 0x85, this may mean "start of file name", and may not be the charset
 						# There may sometimes be an 0x81 byte, which means the *next* byte is the charset
+						# This isn't always *before* the file name, sometimes it's after
 						if content_type_range[data_content_type_index] == 0x81:
 							data_charset = self.charsets[content_type_range[data_content_type_index+1]]
 							data_content_type_index += 2
@@ -430,9 +431,23 @@ class MMSMessage:
 						if len(content_type_range) > data_content_type_index:
 							# The rest is the file name, followed by a null byte
 							# Sometimes there's an 0x85 here.  Not sure why.
-							# Pretty sure we already read the charset, and no longer need it.
 							# Just strip it off, I guess.
-							file_name = content_type_range[data_content_type_index:].lstrip(b'\x85').rstrip(b'\x00').decode('utf_8')
+							# TODO: Don't use `.rstrip(b'\x00')`, just read to the NULL byte
+							content_type_null = content_type_range.find(b'\x00')
+							if(content_type_null > -1):
+								file_name = content_type_range[data_content_type_index:content_type_null].lstrip(b'\x85').decode('utf_8')
+								data_content_type_index += content_type_null-1
+
+						# So, sometimes the charset is *after* the file name.
+						# If after reading the file name, there are more bytes, then
+						# read them as the charset
+						if len(content_type_range) > data_content_type_index:
+							if content_type_range[data_content_type_index] == 0x81:
+								data_charset = self.charsets[content_type_range[data_content_type_index+1]]
+								data_content_type_index += 2
+							else:
+								data_charset = self.charsets[content_type_range[data_content_type_index]]
+								data_content_type_index += 1
 
 				# Followed by the "Content-ID" (this may not match the one from earlier)
 				# This is just the rest of the remaining bytes before the data
@@ -479,6 +494,7 @@ class MMSMessage:
 					'fileName': file_name,
 					'contentType': data_content_type,
 					'contentLength': content_length,
+					'charset': data_charset if not data_content_type.startswith('image/') else '',
 					'data': the_data
 				})
 
