@@ -29,6 +29,8 @@ Other references:
 - https://en.wikipedia.org/wiki/Cellular_data_communication_protocol#MMS.5Bjargon.5D
 - https://www.wireshark.org/docs/dfref/m/mmse.html
 
-Note to self: JPEG "hex signature" is: FF D8 FF E1
-PNG is: 89 50 4E 47 0D 0A 1A 0A
+Note to self:
+- JPEG "hex signature" is: FF D8 FF E1
+- PNG is: 89 50 4E 47 0D 0A 1A 0A
+
 https://en.wikipedia.org/wiki/List_of_file_signatures
