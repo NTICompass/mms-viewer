@@ -432,7 +432,7 @@ class MMSMessage:
 							# The rest is the file name, followed by a null byte
 							# Sometimes there's an 0x85 here.  Not sure why.
 							# Just strip it off, I guess.
-							# TODO: Don't use `.rstrip(b'\x00')`, just read to the NULL byte
+							# Don't use `.rstrip(b'\x00')`, just read to the NULL byte
 							content_type_null = content_type_range.find(b'\x00')
 							if(content_type_null > -1):
 								file_name = content_type_range[data_content_type_index:content_type_null].lstrip(b'\x85').decode('utf_8')
