@@ -7,7 +7,7 @@ from VirginMobile import VirginMobile
 from MMSMessage import MMSMessage
 from PhoneBook import PhoneBook
 
-version = "0.4 alpha"
+version = "0.5 beta"
 
 parser = argparse.ArgumentParser(
 	description="MMS Viewer v{0}: An MMS Downloader and Decoder".format(version),
