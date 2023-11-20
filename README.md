@@ -1,5 +1,5 @@
 # mms-viewer
-A crappy python script to download/parse MMS messages.
+A python script to download/parse MMS messages.
 
 Can use a phonebook database.  To do so, create an sqlite database named `phonebook.db`.
 
